@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dashboard · Shop Manager</title>
+  <script>
+    (function () {
+      try {
+        var t = localStorage.getItem('sm-theme') ||
+          (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+        document.documentElement.setAttribute('data-theme', t);
+      } catch (e) {}
+    })();
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/lucide@0.294.0"></script>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body data-nav="dashboard">
+
+  <!-- ===== Shared shell: overlay + sidebar + topbar (copy this block into every app page) ===== -->
+  <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+  <aside class="sidebar" id="sidebar" aria-label="Main navigation">
+    <div class="sidebar-header">
+      <a class="brand" href="dashboard.html">
+        <span class="brand-mark"><i data-lucide="store"></i></span>
+        Shop Manager
+      </a>
+    </div>
+    <nav class="sidebar-nav">
+      <a class="nav-link" data-nav="dashboard" href="dashboard.html"><i data-lucide="layout-dashboard"></i>Dashboard</a>
+      <a class="nav-link" data-nav="products" href="products.html"><i data-lucide="package"></i>Products</a>
+      <a class="nav-link" data-nav="orders" href="orders.html"><i data-lucide="shopping-cart"></i>Orders</a>
+      <a class="nav-link" data-nav="customers" href="customers.html"><i data-lucide="users"></i>Customers</a>
+      <a class="nav-link" data-nav="suppliers" href="suppliers.html"><i data-lucide="truck"></i>Suppliers</a>
+      <a class="nav-link" data-nav="purchases" href="purchases.html"><i data-lucide="clipboard-list"></i>Purchases</a>
+      <a class="nav-link" data-nav="expenses" href="expenses.html"><i data-lucide="wallet"></i>Expenses</a>
+      <a class="nav-link" data-nav="reports" href="reports.html"><i data-lucide="bar-chart-3"></i>Reports</a>
+      <a class="nav-link" data-nav="settings" href="settings.html"><i data-lucide="settings"></i>Settings</a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-row">
+        <span class="avatar" data-user-initials>MC</span>
+        <span class="user-meta">
+          <span class="user-name" data-user-name>Maya Chen</span>
+          <span class="user-role" data-user-role>Manager</span>
+        </span>
+      </div>
+      <div class="sidebar-footer-row">
+        <span class="text-3" style="font-size:12px;" data-shop-name>Northwind Supply Co.</span>
+        <button type="button" class="btn btn-ghost btn-icon btn-sm" data-theme-toggle aria-label="Toggle theme">
+          <i data-lucide="sun" class="i-sun is-hidden"></i>
+          <i data-lucide="moon" class="i-moon"></i>
+        </button>
+      </div>
+    </div>
+  </aside>
+
+  <header class="topbar">
+    <button type="button" class="btn btn-ghost btn-icon" id="nav-toggle"
+            aria-label="Open menu" aria-expanded="false" aria-controls="sidebar">
+      <i data-lucide="menu"></i>
+    </button>
+    <a class="brand" href="dashboard.html">
+      <span class="brand-mark"><i data-lucide="store"></i></span>
+      <span class="topbar-title">Shop Manager</span>
+    </a>
+    <span class="spacer"></span>
+    <button type="button" class="btn btn-ghost btn-icon" data-theme-toggle aria-label="Toggle theme">
+      <i data-lucide="sun" class="i-sun is-hidden"></i>
+      <i data-lucide="moon" class="i-moon"></i>
+    </button>
+  </header>
+  <!-- ===== End shared shell ===== -->
+
+  <main class="main">
+    <div class="page-header">
+      <div>
+        <h1 class="page-title" id="greeting">Good morning</h1>
+        <p class="page-sub" id="greeting-date"></p>
+      </div>
+      <div class="page-actions">
+        <a class="btn btn-primary" href="order-new.html"><i data-lucide="plus"></i>New order</a>
+      </div>
+    </div>
+
+    <!-- loading skeleton -->
+    <div id="dash-skeleton" aria-hidden="true">
+      <div class="stat-grid">
+        <div class="card sk-card"><div class="skeleton sk-line" style="width:45%"></div><div class="skeleton sk-value"></div><div class="skeleton sk-line" style="width:65%"></div></div>
+        <div class="card sk-card"><div class="skeleton sk-line" style="width:55%"></div><div class="skeleton sk-value"></div><div class="skeleton sk-line" style="width:60%"></div></div>
+        <div class="card sk-card"><div class="skeleton sk-line" style="width:50%"></div><div class="skeleton sk-value"></div><div class="skeleton sk-line" style="width:70%"></div></div>
+        <div class="card sk-card"><div class="skeleton sk-line" style="width:60%"></div><div class="skeleton sk-value"></div><div class="skeleton sk-line" style="width:55%"></div></div>
+      </div>
+      <div class="card mb-16"><div class="card-body"><div class="skeleton sk-block"></div></div></div>
+      <div class="dash-grid">
+        <div class="card"><div class="card-body"><div class="skeleton sk-line" style="width:30%"></div><div class="skeleton sk-block" style="height:180px"></div></div></div>
+        <div class="card"><div class="card-body"><div class="skeleton sk-line" style="width:30%"></div><div class="skeleton sk-block" style="height:180px"></div></div></div>
+      </div>
+    </div>
+
+    <!-- empty state: brand new shop — demo with dashboard.html?state=empty -->
+    <div class="card" id="dash-empty" hidden>
+      <div class="empty-state">
+        <div class="empty-icon"><i data-lucide="package-plus"></i></div>
+        <h2 class="empty-title">Welcome to Shop Manager</h2>
+        <p class="empty-desc">Your dashboard will fill in as soon as you add products and start taking orders. Start by adding what you sell.</p>
+        <a href="products.html" class="btn btn-primary">Add your first product</a>
+      </div>
+    </div>
+
+    <!-- error state — demo with dashboard.html?state=error -->
+    <div class="card" id="dash-error" hidden>
+      <div class="error-state">
+        <div class="empty-icon"><i data-lucide="cloud-off"></i></div>
+        <h2 class="empty-title">Couldn't load the dashboard</h2>
+        <p class="empty-desc">We couldn't reach the server. Check your connection and try again.</p>
+        <div class="flex">
+          <button type="button" class="btn btn-primary" id="retry-btn">Try again</button>
+          <a href="products.html" class="btn btn-secondary">Go to products</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- loaded -->
+    <div id="dash-loaded" hidden>
+      <div class="stat-grid" id="stat-grid"></div>
+
+      <section class="card chart-card mb-16" aria-label="Sales trend">
+        <div class="card-header chart-head">
+          <h2 class="card-title">Sales trend</h2>
+          <div class="seg" role="group" aria-label="Chart range">
+            <button type="button" data-range="7" class="is-selected">7 days</button>
+            <button type="button" data-range="30">30 days</button>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="chart-box">
+            <canvas id="sales-chart" role="img" aria-label="Line chart of daily sales"></canvas>
+          </div>
+        </div>
+      </section>
+
+      <div class="dash-grid">
+        <section class="card" aria-label="Recent orders">
+          <div class="card-header">
+            <h2 class="card-title">Recent orders</h2>
+            <a class="view-all" href="orders.html">View all<i data-lucide="chevron-right"></i></a>
+          </div>
+          <div id="recent-orders"></div>
+        </section>
+
+        <section class="card" aria-label="Low stock">
+          <div class="card-header">
+            <h2 class="card-title">Low stock</h2>
+            <a class="view-all" href="products.html?filter=low">View all<i data-lucide="chevron-right"></i></a>
+          </div>
+          <div class="card-body" id="low-stock"></div>
+        </section>
+      </div>
+    </div>
+  </main>
+
+  <a href="order-new.html" class="fab" id="fab"><i data-lucide="plus"></i>New order</a>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.4/dist/umd/supabase.min.js"></script>
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+  <script>
+    (function () {
+      var qs = SM.qs, qsa = SM.qsa, fmt = SM.formatMoney, esc = SM.escapeHtml;
+
+      var params = new URLSearchParams(window.location.search);
+      var mode = params.get('state'); /* 'empty' | 'error' | null */
+
+      var skeleton = qs('#dash-skeleton'), loaded = qs('#dash-loaded'),
+          empty = qs('#dash-empty'), errorBox = qs('#dash-error'), fab = qs('#fab');
+      function show(el) {
+        [skeleton, loaded, empty, errorBox].forEach(function (x) { x.hidden = x !== el; });
+      }
+
+      var ctx = null, tz = 'UTC', canReorder = false;
+
+      /* ---------- date helpers (all day-boundaries use the shop's timezone) ---------- */
+      function ymdInTz(date) {
+        try {
+          var parts = new Intl.DateTimeFormat('en-US', {
+            timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit'
+          }).formatToParts(date);
+          var o = {};
+          parts.forEach(function (p) { o[p.type] = p.value; });
+          return o.year + '-' + o.month + '-' + o.day;
+        } catch (e) {
+          return date.toISOString().slice(0, 10);
+        }
+      }
+      function utcMs(ymd) {
+        var p = ymd.split('-');
+        return Date.UTC(+p[0], +p[1] - 1, +p[2]);
+      }
+      function addDays(ymd, n) {
+        return new Date(utcMs(ymd) + n * 864e5).toISOString().slice(0, 10);
+      }
+      function dayDiff(fromYmd, toYmd) {
+        return Math.round((utcMs(toYmd) - utcMs(fromYmd)) / 864e5);
+      }
+      function shortDay(ymd) {
+        return new Date(utcMs(ymd)).toLocaleDateString('en-US',
+          { month: 'short', day: 'numeric', timeZone: 'UTC' });
+      }
+
+      /* ---------- greeting ---------- */
+      function renderGreeting() {
+        var now = new Date();
+        var h = now.getHours();
+        var first = String((ctx && ctx.profile && ctx.profile.full_name) || '').trim().split(/\s+/)[0];
+        qs('#greeting').textContent =
+          (h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening') + (first ? ', ' + first : '');
+        qs('#greeting-date').textContent = now.toLocaleDateString('en-US',
+          { weekday: 'long', month: 'long', day: 'numeric' });
+      }
+
+      /* ---------- stat cards ---------- */
+      function renderStats(d) {
+        var diff = d.todayCount - d.yestCount;
+        var word = 'order' + (Math.abs(diff) === 1 ? '' : 's');
+        var hint = diff === 0 ? { t: 'Same as yesterday', c: '' } :
+          diff > 0 ? { t: '+' + diff + ' ' + word + ' vs yesterday', c: 'is-up' } :
+                     { t: Math.abs(diff) + ' fewer ' + word + ' vs yesterday', c: 'is-down' };
+
+        var pct = d.lastMonth ? Math.round((d.monthSales - d.lastMonth) / d.lastMonth * 100) : null;
+        var mh = pct === null ? { t: 'No sales last month', c: '' } :
+          pct >= 0 ? { t: '+' + pct + '% vs last month', c: pct === 0 ? '' : 'is-up' } :
+                     { t: pct + '% vs last month', c: 'is-down' };
+
+        var ph = d.pending
+          ? (d.waitDays === 0 ? 'All from today' : 'Oldest waiting ' + d.waitDays + (d.waitDays === 1 ? ' day' : ' days'))
+          : 'Nothing waiting';
+
+        function card(label, value, ic, vc, hintObj, linkHref, linkText) {
+          return '<div class="card stat-card">' +
+            '<span class="stat-label">' + label + '</span>' +
+            '<span class="stat-value">' + value + '</span>' +
+            '<span class="stat-hint ' + hintObj.c + '"><i data-lucide="' + ic + '"></i>' + hintObj.t + '</span>' +
+            '<a class="stat-link" href="' + linkHref + '">' + linkText + '<i data-lucide="chevron-right"></i></a>' +
+            '</div>';
+        }
+        qs('#stat-grid').innerHTML =
+          card("Today's sales", fmt(d.todaySales), diff >= 0 ? 'trending-up' : 'trending-down', hint.c, hint, 'orders.html', 'View orders') +
+          card("This month's sales", fmt(d.monthSales), pct === null ? 'calendar' : (pct >= 0 ? 'trending-up' : 'trending-down'), mh.c, mh, 'reports.html', 'View report') +
+          card('Pending orders', String(d.pending), 'clock', '', { t: ph, c: '' }, 'orders.html?status=pending', 'View pending') +
+          card('Low-stock products', String(d.lowCount), 'package', '', { t: 'At or below reorder level', c: '' }, 'products.html?filter=low', 'Review products');
+      }
+
+      /* ---------- chart ---------- */
+      var chart = null, range = 7, series = [];
+      function themeColors() {
+        var cs = getComputedStyle(document.documentElement);
+        function v(name) { return cs.getPropertyValue(name).trim(); }
+        return { line: v('--primary'), grid: v('--border'), tick: v('--text-3'), soft: v('--primary-soft') };
+      }
+      function labels() {
+        return series.slice(-range).map(function (p) { return p.label; });
+      }
+      function values() {
+        return series.slice(-range).map(function (p) { return Math.round(p.v * 100) / 100; });
+      }
+      function renderChart(days) {
+        var box = qs('.chart-box');
+        if (typeof Chart === 'undefined') {
+          box.innerHTML = '<p class="muted" style="padding:24px 0;">Chart library failed to load. Check your connection and refresh.</p>';
+          return;
+        }
+        series = days.map(function (r) {
+          return { label: shortDay(r.day), v: Number(r.revenue) || 0 };
+        });
+        var c = themeColors();
+        chart = new Chart(qs('#sales-chart'), {
+          type: 'line',
+          data: {
+            labels: labels(),
+            datasets: [{
+              data: values(),
+              borderColor: c.line,
+              backgroundColor: c.soft,
+              fill: true, tension: 0.35, borderWidth: 2,
+              pointRadius: 0, pointHoverRadius: 4, pointHitRadius: 12
+            }]
+          },
+          options: {
+            responsive: true, maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+              legend: { display: false },
+              tooltip: { callbacks: { label: function (c2) { return ' ' + fmt(c2.parsed.y); } } }
+            },
+            scales: {
+              x: { grid: { display: false }, ticks: { color: c.tick, maxTicksLimit: 6, font: { size: 11 } } },
+              y: { border: { display: false }, grid: { color: c.grid },
+                   ticks: { color: c.tick, maxTicksLimit: 5, callback: function (v) { return SM.moneyTick(v); }, font: { size: 11 } } }
+            }
+          }
+        });
+        SM.onTheme(function () {
+          if (!chart) return;
+          var nc = themeColors();
+          chart.data.datasets[0].borderColor = nc.line;
+          chart.data.datasets[0].backgroundColor = nc.soft;
+          chart.options.scales.x.ticks.color = nc.tick;
+          chart.options.scales.y.ticks.color = nc.tick;
+          chart.options.scales.y.grid.color = nc.grid;
+          chart.update('none');
+        });
+        qsa('.seg button').forEach(function (b) {
+          b.addEventListener('click', function () {
+            qsa('.seg button').forEach(function (x) { x.classList.toggle('is-selected', x === b); });
+            range = +b.dataset.range;
+            chart.data.labels = labels();
+            chart.data.datasets[0].data = values();
+            chart.update();
+          });
+        });
+      }
+
+      /* ---------- recent orders ---------- */
+      function renderRecent(list) {
+        var wrap = qs('#recent-orders');
+        if (!list.length) {
+          wrap.innerHTML =
+            '<div class="empty-state" style="padding:24px;">' +
+            '<div class="empty-icon"><i data-lucide="shopping-cart"></i></div>' +
+            '<p class="empty-desc">No orders yet.</p></div>';
+          return;
+        }
+        var rows = list.map(function (o) {
+          var who = (o.customers && o.customers.name) || o.customer_name || 'Walk-in customer';
+          var num = esc(o.number);
+          var href = 'orders.html#' + encodeURIComponent(o.number);
+          return '<tr class="is-clickable" data-href="' + esc(href) + '" tabindex="0">' +
+            '<td data-label=""><a class="cell-strong tnum" href="' + esc(href) + '">' + num + '</a></td>' +
+            '<td data-label="Customer">' + esc(who) + '</td>' +
+            '<td data-label="Status">' + SM.badge(o.status) + '</td>' +
+            '<td data-label="Total" class="num">' + fmt(Number(o.total) || 0) + '</td></tr>';
+        }).join('');
+        wrap.innerHTML =
+          '<div class="table-wrap table-plain"><table class="table table-responsive table--compact">' +
+          '<thead><tr><th>Order</th><th>Customer</th><th>Status</th><th class="num">Total</th></tr></thead>' +
+          '<tbody>' + rows + '</tbody></table></div>';
+      }
+      (function bindRecent() {
+        var wrap = qs('#recent-orders');
+        wrap.addEventListener('click', function (e) {
+          var tr = e.target.closest('tr[data-href]');
+          if (tr && !e.target.closest('a')) window.location.href = tr.dataset.href;
+        });
+        wrap.addEventListener('keydown', function (e) {
+          var tr = e.target.closest('tr[data-href]');
+          if (tr && (e.key === 'Enter' || e.key === ' ')) {
+            e.preventDefault();
+            window.location.href = tr.dataset.href;
+          }
+        });
+      })();
+
+      /* ---------- low stock ---------- */
+      function renderLow(lows) {
+        if (!lows.length) {
+          qs('#low-stock').innerHTML =
+            '<div class="empty-state" style="padding:24px;">' +
+            '<div class="empty-icon"><i data-lucide="check-circle-2"></i></div>' +
+            '<p class="empty-desc">Every product is above its reorder level.</p></div>';
+          return;
+        }
+        qs('#low-stock').innerHTML = lows.map(function (p) {
+          var cls = p.stock === 0 ? 'is-danger' : 'is-warning';
+          var w = p.reorder_level > 0 ? Math.min(p.stock / (p.reorder_level * 2), 1) * 100 : 0;
+          return '<div class="reorder-row">' +
+            '<div class="reorder-meta">' +
+              '<div class="reorder-name">' + esc(p.name) + '</div>' +
+              '<div class="reorder-sub">' + esc(p.category) + ' · ' + esc(p.sku) + '</div>' +
+            '</div>' +
+            '<div class="reorder-meter">' +
+              '<div class="meter ' + cls + '"><span style="width:' + w + '%"></span></div>' +
+              '<span class="reorder-count">' + p.stock + ' / ' + p.reorder_level + '</span>' +
+            '</div>' +
+            (canReorder
+              ? '<button type="button" class="btn btn-secondary btn-sm" data-reorder="' + esc(p.name) + '" data-product-id="' + esc(p.id) + '">Reorder</button>'
+              : '') +
+            '</div>';
+        }).join('');
+      }
+      qs('#low-stock').addEventListener('click', function (e) {
+        var btn = e.target.closest('[data-reorder]');
+        if (!btn) return;
+        /* No "reorder" table/RPC exists: hand off to Purchases, which creates POs via create_purchase_order. */
+        window.location.href = 'purchases.html?reorder=' + encodeURIComponent(btn.dataset.productId);
+      });
+
+      /* ---------- data ---------- */
+      /* PostgREST cannot compare two columns (stock <= reorder_level), so page through
+         active products (id-stable order) and filter client-side. */
+      async function fetchLowStock() {
+        var out = [], from = 0, page = 1000;
+        for (var i = 0; i < 10; i++) {
+          var r = await SM.db.from('products')
+            .select('id,name,sku,category,stock,reorder_level')
+            .eq('active', true)
+            .order('id', { ascending: true })
+            .range(from, from + page - 1);
+          if (r.error) throw r.error;
+          r.data.forEach(function (p) { if (p.stock <= p.reorder_level) out.push(p); });
+          if (r.data.length < page) break;
+          from += page;
+        }
+        return out.sort(function (a, b) { return a.stock - b.stock; });
+      }
+
+      async function loadDashboard() {
+        var today = ymdInTz(new Date());
+        var p = today.split('-'), y = +p[0], m = +p[1];
+        var prevFrom = new Date(Date.UTC(y, m - 2, 1)).toISOString().slice(0, 10);
+        var prevTo = new Date(Date.UTC(y, m - 1, 0)).toISOString().slice(0, 10);
+
+        var res = await Promise.all([
+          SM.db.rpc('dashboard_stats'),
+          SM.db.rpc('sales_by_day', { p_from: addDays(today, -29), p_to: today }),
+          SM.db.rpc('report_summary', { p_from: prevFrom, p_to: prevTo }),
+          SM.db.from('orders').select('created_at').eq('status', 'pending')
+            .order('created_at', { ascending: true }).limit(1),
+          SM.db.from('orders').select('id,number,customer_name,status,total,created_at,customers(name)')
+            .order('created_at', { ascending: false }).limit(6),
+          SM.db.from('products').select('id', { count: 'exact', head: true }),
+          fetchLowStock()
+        ]);
+        for (var i = 0; i < 6; i++) { if (res[i].error) throw res[i].error; }
+
+        var stats = (res[0].data && res[0].data[0]) || {};
+        var days = res[1].data || [];
+        var prev = (res[2].data && res[2].data[0]) || {};
+        var oldestPending = res[3].data && res[3].data[0];
+        var recent = res[4].data || [];
+        var productCount = res[5].count || 0;
+        var lows = res[6];
+
+        if (!recent.length && productCount === 0) return { isEmpty: true };
+
+        var n = days.length;
+        return {
+          isEmpty: false,
+          days: days,
+          recent: recent,
+          lows: lows,
+          stats: {
+            todaySales: Number(stats.today_sales) || 0,
+            monthSales: Number(stats.month_sales) || 0,
+            pending: Number(stats.pending_orders) || 0,
+            lowCount: Number(stats.low_stock_products) || 0,
+            todayCount: n ? Number(days[n - 1].orders_count) || 0 : 0,
+            yestCount: n > 1 ? Number(days[n - 2].orders_count) || 0 : 0,
+            lastMonth: Number(prev.revenue) || 0,
+            waitDays: oldestPending ? Math.max(0, dayDiff(ymdInTz(new Date(oldestPending.created_at)), today)) : 0
+          }
+        };
+      }
+
+      function fail(err) {
+        fab.hidden = true;
+        show(errorBox);
+        SM.icons();
+        SM.handleError(err);
+      }
+
+      /* ---------- boot ---------- */
+      qs('#retry-btn').addEventListener('click', function () { window.location.reload(); });
+      SM.initShell();
+
+      (async function boot() {
+        var session = await SM.requireAuth();
+        if (!session) return; /* redirecting to login.html */
+
+        try {
+          ctx = await SM.loadContext();
+        } catch (e) { fail(e); return; }
+        tz = (ctx.shop && ctx.shop.timezone) || 'UTC';
+        canReorder = SM.isManager();
+        renderGreeting();
+
+        if (mode === 'empty') { fab.hidden = true; show(empty); SM.icons(); return; }
+        if (mode === 'error') { fab.hidden = true; show(errorBox); SM.icons(); return; }
+
+        try {
+          var d = await loadDashboard();
+          if (d.isEmpty) { fab.hidden = true; show(empty); SM.icons(); return; }
+          renderStats(d.stats);
+          renderChart(d.days);
+          renderRecent(d.recent);
+          renderLow(d.lows);
+          show(loaded);
+          SM.icons();
+        } catch (e) { fail(e); }
+      })();
+    })();
+  </script>
+</body>
+</html>

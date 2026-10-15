@@ -1,0 +1,854 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>New order · Shop Manager</title>
+  <script>
+    (function () {
+      try {
+        var t = localStorage.getItem('sm-theme') ||
+          (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+        document.documentElement.setAttribute('data-theme', t);
+      } catch (e) {}
+    })();
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/lucide@0.294.0"></script>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body data-nav="orders" class="page-order">
+
+  <!-- ===== Shared shell ===== -->
+  <div class="sidebar-overlay" id="sidebar-overlay"></div>
+  <aside class="sidebar" id="sidebar" aria-label="Main navigation">
+    <div class="sidebar-header">
+      <a class="brand" href="dashboard.html"><span class="brand-mark"><i data-lucide="store"></i></span>Shop Manager</a>
+    </div>
+    <nav class="sidebar-nav">
+      <a class="nav-link" data-nav="dashboard" href="dashboard.html"><i data-lucide="layout-dashboard"></i>Dashboard</a>
+      <a class="nav-link" data-nav="products" href="products.html"><i data-lucide="package"></i>Products</a>
+      <a class="nav-link" data-nav="orders" href="orders.html"><i data-lucide="shopping-cart"></i>Orders</a>
+      <a class="nav-link" data-nav="customers" href="customers.html"><i data-lucide="users"></i>Customers</a>
+      <a class="nav-link" data-nav="suppliers" href="suppliers.html"><i data-lucide="truck"></i>Suppliers</a>
+      <a class="nav-link" data-nav="purchases" href="purchases.html"><i data-lucide="clipboard-list"></i>Purchases</a>
+      <a class="nav-link" data-nav="expenses" href="expenses.html"><i data-lucide="wallet"></i>Expenses</a>
+      <a class="nav-link" data-nav="reports" href="reports.html"><i data-lucide="bar-chart-3"></i>Reports</a>
+      <a class="nav-link" data-nav="settings" href="settings.html"><i data-lucide="settings"></i>Settings</a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-row">
+        <span class="avatar">MC</span>
+        <span class="user-meta"><span class="user-name">Maya Chen</span><span class="user-role">Manager</span></span>
+      </div>
+      <div class="sidebar-footer-row">
+        <span class="text-3" style="font-size:12px;">Northwind Supply Co.</span>
+        <button type="button" class="btn btn-ghost btn-icon btn-sm" data-theme-toggle aria-label="Toggle theme">
+          <i data-lucide="sun" class="i-sun is-hidden"></i><i data-lucide="moon" class="i-moon"></i>
+        </button>
+      </div>
+    </div>
+  </aside>
+  <header class="topbar">
+    <button type="button" class="btn btn-ghost btn-icon" id="nav-toggle" aria-label="Open menu" aria-expanded="false" aria-controls="sidebar">
+      <i data-lucide="menu"></i>
+    </button>
+    <a class="brand" href="dashboard.html"><span class="brand-mark"><i data-lucide="store"></i></span><span class="topbar-title">Shop Manager</span></a>
+    <span class="spacer"></span>
+    <button type="button" class="btn btn-ghost btn-icon" data-theme-toggle aria-label="Toggle theme">
+      <i data-lucide="sun" class="i-sun is-hidden"></i><i data-lucide="moon" class="i-moon"></i>
+    </button>
+  </header>
+  <!-- ===== End shared shell ===== -->
+
+  <main class="main">
+    <!-- skeleton -->
+    <div id="order-skeleton" aria-hidden="true">
+      <div class="page-header"><div class="skeleton sk-line" style="width:130px;height:20px"></div><div class="skeleton sk-line" style="width:110px;height:44px"></div></div>
+      <div class="order-layout">
+        <div>
+          <div class="card mb-16"><div class="card-body"><div class="skeleton sk-line" style="width:260px;height:44px"></div></div></div>
+          <div class="card"><div class="card-body"><div class="skeleton sk-line" style="width:40%"></div><div class="skeleton sk-block" style="height:220px;margin-top:12px"></div></div></div>
+        </div>
+        <div class="card"><div class="card-body"><div class="skeleton sk-line" style="width:50%"></div><div class="skeleton sk-block" style="height:200px;margin-top:12px"></div></div></div>
+      </div>
+    </div>
+
+    <!-- error (order-new.html?state=error) -->
+    <div class="card" id="order-error" hidden>
+      <div class="error-state">
+        <div class="empty-icon"><i data-lucide="cloud-off"></i></div>
+        <h1 class="empty-title">Couldn't load the order form</h1>
+        <p class="empty-desc">We couldn't load your products. Check your connection and try again.</p>
+        <button type="button" class="btn btn-primary" onclick="window.location.reload()">Try again</button>
+      </div>
+    </div>
+
+    <!-- empty shop (order-new.html?state=empty) -->
+    <div class="card" id="order-empty" hidden>
+      <div class="empty-state">
+        <div class="empty-icon"><i data-lucide="package-plus"></i></div>
+        <h1 class="empty-title">No products to sell yet</h1>
+        <p class="empty-desc">Add products first, then come back to take an order.</p>
+        <a href="products.html" class="btn btn-primary"><i data-lucide="plus"></i>Add your first product</a>
+      </div>
+    </div>
+
+    <!-- loaded -->
+    <div id="order-loaded" hidden>
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">New order</h1>
+          <p class="page-sub">Scan or search products, adjust totals, save.</p>
+        </div>
+        <div class="page-actions">
+          <button type="button" class="btn btn-ghost" id="cancel-btn">Cancel</button>
+          <button type="button" class="btn btn-secondary desktop-only js-save-again">Save and add another</button>
+          <button type="button" class="btn btn-primary desktop-only js-save">Save order</button>
+        </div>
+      </div>
+
+      <div class="order-layout">
+        <div class="order-main">
+          <!-- customer -->
+          <section class="card mb-16" aria-label="Customer">
+            <div class="card-body">
+              <div class="customer-box">
+                <button type="button" class="customer-btn" id="customer-btn" aria-haspopup="listbox" aria-expanded="false">
+                  <i data-lucide="user"></i>
+                  <span class="c-name" id="customer-name">Walk-in customer</span>
+                  <i data-lucide="chevron-down" class="chev"></i>
+                </button>
+                <div class="customer-pop" id="customer-pop" hidden>
+                  <div class="customer-search">
+                    <i data-lucide="search"></i>
+                    <input class="input" type="search" id="cust-search" placeholder="Search name, email or phone" aria-label="Search customers">
+                  </div>
+                  <div class="cust-list" id="cust-list"></div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- line items -->
+          <section class="card" id="grid-root" aria-label="Order items">
+            <div class="card-header">
+              <h2 class="card-title">Items</h2>
+              <span class="grid-hint">Enter new line · Tab next field · Ctrl+Enter save</span>
+            </div>
+            <div class="card-body">
+              <div class="search-box scan-box">
+                <i data-lucide="barcode"></i>
+                <input class="input" type="text" id="scan-input" autocomplete="off"
+                       placeholder="Scan barcode or type SKU, then press Enter" aria-label="Scan barcode or type SKU">
+              </div>
+
+              <div class="lines-head" aria-hidden="true">
+                <span>#</span><span>Product</span><span>Qty</span><span>Unit price</span><span class="num">Total</span><span></span>
+              </div>
+              <div id="lines-body"></div>
+              <div class="lines-meta"><span id="lines-count"></span><span id="lines-units"></span></div>
+            </div>
+          </section>
+        </div>
+
+        <!-- summary -->
+        <aside class="order-side">
+          <section class="card" aria-label="Order summary">
+            <div class="card-header"><h2 class="card-title">Summary</h2></div>
+            <div class="card-body">
+              <div class="sum-rows">
+                <div class="sum-row"><span>Subtotal</span><span class="tnum" id="sum-subtotal">$0.00</span></div>
+                <div class="sum-row">
+                  <span>Discount <span class="sum-note" id="discount-applied" hidden></span></span>
+                  <span class="flex">
+                    <span class="seg-mini" role="group" aria-label="Discount type">
+                      <button type="button" data-dmode="amount" class="is-selected" aria-pressed="true">$</button>
+                      <button type="button" data-dmode="percent" aria-pressed="false">%</button>
+                    </span>
+                    <input class="input" type="number" id="discount-input" data-field="discount"
+                           min="0" step="0.01" value="0" aria-label="Discount value">
+                  </span>
+                </div>
+                <div class="sum-row">
+                  <span class="flex">Tax
+                    <input class="input input-mini" type="number" id="tax-input" data-field="tax_rate"
+                           min="0" max="100" step="0.1" aria-label="Tax percent">
+                    <span class="text-3">%</span>
+                  </span>
+                  <span class="tnum" id="tax-amt">$0.00</span>
+                </div>
+              </div>
+
+              <div class="sum-total">
+                <span class="label">Total</span>
+                <span class="amount" id="sum-total">$0.00</span>
+              </div>
+
+              <h3 class="summary-section">Payment</h3>
+              <div class="pay-seg" role="group" aria-label="Payment status">
+                <button type="button" class="chip is-selected" data-pay="unpaid" aria-pressed="true"><span class="dot dot-danger"></span>Unpaid</button>
+                <button type="button" class="chip" data-pay="partial" aria-pressed="false"><span class="dot dot-warning"></span>Partial</button>
+                <button type="button" class="chip" data-pay="paid" aria-pressed="false"><span class="dot dot-success"></span>Paid</button>
+              </div>
+              <div class="field mt-8" id="paid-field" hidden>
+                <label class="label" for="paid-input">Amount paid</label>
+                <input class="input" type="number" id="paid-input" data-field="paid" min="0" step="0.01" placeholder="0.00" aria-describedby="paid-error">
+                <p class="field-error" id="paid-error" hidden></p>
+              </div>
+              <div class="field">
+                <label class="label" for="method-select">Payment method</label>
+                <div class="select-wrap">
+                  <select class="select" id="method-select" data-field="payment_method">
+                    <option>Cash</option><option>Card</option><option>Bank transfer</option>
+                  </select>
+                  <i data-lucide="chevron-down" class="select-caret"></i>
+                </div>
+              </div>
+
+              <h3 class="summary-section">Notes</h3>
+              <textarea class="textarea" id="notes-input" data-field="notes" rows="2" style="min-height:64px;" placeholder="Optional notes for this order"></textarea>
+
+              <div class="summary-save">
+                <button type="button" class="btn btn-primary btn-block js-save">Save order</button>
+                <button type="button" class="btn btn-secondary btn-block js-save-again">Save and add another</button>
+              </div>
+            </div>
+          </section>
+        </aside>
+      </div>
+    </div>
+  </main>
+
+  <!-- mobile sticky bottom bar -->
+  <div class="order-bottombar">
+    <span class="bb-total">Total<strong id="bb-total">$0.00</strong></span>
+    <span class="spacer"></span>
+    <button type="button" class="btn btn-primary js-save">Save order</button>
+  </div>
+
+  <!-- add customer modal -->
+  <div class="overlay" id="customer-overlay" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="nc-title">
+      <div class="sheet-handle" aria-hidden="true"></div>
+      <div class="modal-header">
+        <h2 class="modal-title" id="nc-title">Add customer</h2>
+        <button type="button" class="btn btn-ghost btn-icon btn-sm" data-layer-close aria-label="Close"><i data-lucide="x"></i></button>
+      </div>
+      <form id="nc-form" novalidate>
+        <div class="modal-body">
+          <div class="field">
+            <label class="label" for="nc-name">Name</label>
+            <input class="input" id="nc-name" data-field="name" data-autofocus placeholder="e.g. Café Aurora" aria-describedby="nc-name-error" required>
+            <p class="field-error" id="nc-name-error" hidden></p>
+          </div>
+          <div class="field">
+            <label class="label" for="nc-email">Email</label>
+            <input class="input" type="email" id="nc-email" data-field="email" placeholder="optional">
+          </div>
+          <div class="field">
+            <label class="label" for="nc-phone">Phone</label>
+            <input class="input" id="nc-phone" data-field="phone" placeholder="optional">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-layer-close>Cancel</button>
+          <button type="submit" class="btn btn-primary">Add customer</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- discard confirm -->
+  <div class="overlay" id="discard-overlay" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="discard-title">
+      <div class="sheet-handle" aria-hidden="true"></div>
+      <div class="modal-header">
+        <h2 class="modal-title" id="discard-title">Discard this order?</h2>
+        <button type="button" class="btn btn-ghost btn-icon btn-sm" data-layer-close aria-label="Close"><i data-lucide="x"></i></button>
+      </div>
+      <div class="modal-body">
+        <p class="muted">The items and details you've entered will be lost.</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-layer-close>Keep editing</button>
+        <button type="button" class="btn btn-danger" id="discard-confirm">Discard order</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.4/dist/umd/supabase.js"></script>
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+  <script>
+    (function () {
+      var qs = SM.qs, qsa = SM.qsa, fmt = SM.formatMoney, esc = SM.escapeHtml;
+      var WALKIN = { name: 'Walk-in customer', walkin: true };
+      var METHODS = { 'Cash': 'cash', 'Card': 'card', 'Bank transfer': 'bank_transfer' }; /* UI label -> DB enum */
+      var DEFAULT_TAX = 0;
+
+      var state = {
+        customer: WALKIN, rows: [], discountMode: 'amount',
+        payment: 'unpaid'
+      };
+      var rowSeq = 0;
+      var saving = false;
+      var tbody = qs('#lines-body');
+      var scanInput = qs('#scan-input');
+
+      function round2(n) { return Math.round(n * 100) / 100; }
+
+      /* ================= data layer (Supabase) ================= */
+      var PRODUCT_COLS = 'id,sku,name,price,stock';
+      function cleanProduct(p) {
+        return { id: p.id, sku: p.sku, name: p.name, price: Number(p.price) || 0, stock: Number(p.stock) || 0 };
+      }
+      /* active products matching name or SKU (server-side, max 8) */
+      function searchProducts(q) {
+        var t = q.replace(/[\\"%*]/g, ' ').trim();
+        if (!t) return Promise.resolve([]);
+        var pat = '"%' + t + '%"';
+        return SM.db.from('products').select(PRODUCT_COLS).eq('active', true)
+          .or('name.ilike.' + pat + ',sku.ilike.' + pat)
+          .order('name').limit(8)
+          .then(function (r) {
+            if (r.error) throw r.error;
+            return (r.data || []).map(cleanProduct);
+          });
+      }
+      /* one active product by exact SKU (case-insensitive), or null */
+      function findBySku(sku) {
+        var t = String(sku).replace(/\*/g, '').trim();
+        if (!t) return Promise.resolve(null);
+        var pat = t.replace(/[\\%_]/g, '\\$&');
+        return SM.db.from('products').select(PRODUCT_COLS).eq('active', true)
+          .ilike('sku', pat).limit(5)
+          .then(function (r) {
+            if (r.error) throw r.error;
+            var list = (r.data || []).map(cleanProduct);
+            return list.filter(function (p) { return p.sku === t; })[0] || list[0] || null;
+          });
+      }
+      /* customers matching name / email / phone (server-side, max 20) */
+      function searchCustomers(q) {
+        var t = String(q || '').replace(/[\\"%*]/g, ' ').trim();
+        var req = SM.db.from('customers').select('id,name,email,phone');
+        if (t) {
+          var pat = '"%' + t + '%"';
+          req = req.or('name.ilike.' + pat + ',email.ilike.' + pat + ',phone.ilike.' + pat);
+        }
+        return req.order('name').limit(20).then(function (r) {
+          if (r.error) throw r.error;
+          return r.data || [];
+        });
+      }
+
+      /* ================= rows ================= */
+      function addRow(focusProduct) {
+        var row = { id: 'r' + (++rowSeq), product: null, qty: 1, price: 0 };
+        state.rows.push(row);
+        var el = document.createElement('div');
+        el.className = 'line-row';
+        el.dataset.id = row.id;
+        el.innerHTML =
+          '<span class="line-idx"></span>' +
+          '<div class="line-product">' +
+            '<input class="input line-product-input" data-field="product" autocomplete="off" placeholder="Search product or SKU" aria-label="Product">' +
+            '<div class="ta-pop" hidden><div class="ta-list"></div></div>' +
+            '<div class="line-sub"><span class="line-stock js-stock"></span><span class="line-warn js-warn" hidden><i data-lucide="alert-triangle"></i><span class="js-warn-text"></span></span></div>' +
+          '</div>' +
+          '<div class="line-grid">' +
+            '<div class="line-cell line-qty-wrap"><label class="m-label">Qty</label><input class="input js-qty" data-field="qty" type="number" min="1" step="1" value="1" inputmode="numeric" aria-label="Quantity"></div>' +
+            '<div class="line-cell line-price-wrap"><label class="m-label">Unit price</label><input class="input js-price" data-field="unit_price" type="number" min="0" step="0.01" value="0.00" inputmode="decimal" aria-label="Unit price"></div>' +
+            '<div class="line-cell line-total-wrap"><span><label class="m-label">Total</label><span class="line-total js-total">$0.00</span></span></div>' +
+            '<div class="line-del"><button type="button" class="btn btn-ghost btn-icon btn-sm js-del" aria-label="Remove line"><i data-lucide="trash-2"></i></button></div>' +
+          '</div>';
+        tbody.appendChild(el);
+        bindRow(row, el);
+        renumber();
+        if (focusProduct) el.querySelector('.line-product-input').focus();
+        SM.icons();
+        return row;
+      }
+      function rowEl(row) { return tbody.querySelector('.line-row[data-id="' + row.id + '"]'); }
+      function removeRow(row) {
+        var el = rowEl(row);
+        var i = state.rows.indexOf(row);
+        if (i > -1) state.rows.splice(i, 1);
+        if (el) el.remove();
+        if (!state.rows.length) addRow(true);
+        renumber(); updateTotals();
+      }
+      function renumber() {
+        qsa('.line-row', tbody).forEach(function (el, i) {
+          el.querySelector('.line-idx').textContent = i + 1;
+        });
+      }
+
+      function bindRow(row, el) {
+        var pInput = el.querySelector('.line-product-input'),
+            qInput = el.querySelector('.js-qty'),
+            prInput = el.querySelector('.js-price');
+
+        pInput.addEventListener('input', function () {
+          row.product = null;
+          openTA(row, el);
+          updateLine(row, el); updateTotals();
+        });
+        pInput.addEventListener('keydown', function (e) {
+          var pop = el.querySelector('.ta-pop');
+          if (e.key === 'Escape' && !pop.hidden) { e.preventDefault(); closeTA(el); return; }
+          if (!pop.hidden) {
+            if (e.key === 'ArrowDown') { e.preventDefault(); moveTA(row, el, 1); return; }
+            if (e.key === 'ArrowUp') { e.preventDefault(); moveTA(row, el, -1); return; }
+            if (e.key === 'Enter') { e.preventDefault(); if (row.taMatches && row.taMatches.length) pickProduct(row, el, row.taMatches[row.taIdx || 0], true); return; }
+            if (e.key === 'Tab') { closeTA(el); return; }
+          } else if (e.key === 'Enter') {
+            e.preventDefault();
+            var term = pInput.value.trim();
+            if (!term) return;
+            var single = row.taMatches && row.taMatches.length === 1 ? row.taMatches[0] : null;
+            findBySku(term).then(function (exact) {
+              var p = exact || single;
+              /* ignore if the user kept typing or already picked something meanwhile */
+              if (p && !row.product && pInput.value.trim() === term) pickProduct(row, el, p, true);
+            }).catch(SM.handleError);
+          }
+        });
+        pInput.addEventListener('blur', function () { setTimeout(function () { closeTA(el); }, 140); });
+
+        qInput.addEventListener('input', function () {
+          var n = parseInt(qInput.value, 10);
+          row.qty = isNaN(n) ? 0 : n;
+          updateLine(row, el); updateTotals();
+        });
+        qInput.addEventListener('blur', function () {
+          if (!(row.qty >= 1)) { row.qty = 1; qInput.value = '1'; updateLine(row, el); updateTotals(); }
+        });
+        qInput.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); enterOnCell(row); } });
+
+        prInput.addEventListener('input', function () {
+          var n = parseFloat(prInput.value);
+          row.price = isNaN(n) ? 0 : n;
+          updateLine(row, el); updateTotals();
+        });
+        prInput.addEventListener('blur', function () {
+          if (!(row.price >= 0) || isNaN(row.price)) { row.price = 0; prInput.value = '0.00'; }
+          else prInput.value = row.price.toFixed(2);
+          updateLine(row, el); updateTotals();
+        });
+        prInput.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); enterOnCell(row); } });
+
+        el.querySelector('.js-del').addEventListener('click', function () { removeRow(row); });
+      }
+      function enterOnCell(row) {
+        var i = state.rows.indexOf(row);
+        if (i === state.rows.length - 1) addRow(true);
+        else {
+          var next = state.rows[i + 1], el = rowEl(next);
+          el.querySelector('.line-product-input').focus();
+        }
+      }
+
+      /* ---- typeahead (server-side search, debounced) ---- */
+      function openTA(row, el) {
+        var input = el.querySelector('.line-product-input');
+        var q = input.value.trim();
+        var pop = el.querySelector('.ta-pop'), list = el.querySelector('.ta-list');
+        var seq = row.taSeq = (row.taSeq || 0) + 1;       /* invalidates any search still in flight */
+        row.taMatches = []; row.taIdx = 0;
+        clearTimeout(row.taTimer);
+        if (!q) { closeTA(el); return; }
+        row.taTimer = setTimeout(function () {
+          searchProducts(q).then(function (matches) {
+            if (seq !== row.taSeq || row.product) return;  /* stale result */
+            row.taMatches = matches; row.taIdx = 0;
+            if (!matches.length) {
+              list.innerHTML = '<div class="ta-empty">No products match. Check the SKU or add it in Products.</div>';
+            } else {
+              list.innerHTML = matches.map(function (p, i) {
+                var stock = p.stock === 0 ? '<span class="ta-out">Out of stock</span>' : '<span>' + p.stock + ' in stock</span>';
+                return '<button type="button" class="ta-item' + (i === 0 ? ' is-active' : '') + '" data-i="' + i + '">' +
+                  '<span class="ta-name">' + esc(p.name) + '</span>' +
+                  '<span class="ta-meta"><span class="tnum">' + esc(p.sku) + '</span>' + stock +
+                  '<span class="ta-price">' + fmt(p.price) + '</span></span></button>';
+              }).join('');
+            }
+            pop.hidden = false;
+            list.onmousedown = function (e) { e.preventDefault(); }; /* keep input focus so click fires */
+            list.onclick = function (e) {
+              var item = e.target.closest('.ta-item');
+              if (item) pickProduct(row, el, matches[+item.dataset.i], true);
+            };
+          }).catch(function (err) {
+            if (seq !== row.taSeq) return;
+            closeTA(el);
+            SM.handleError(err);
+          });
+        }, 250);
+      }
+      function closeTA(el) {
+        var pop = el.querySelector('.ta-pop');
+        if (pop) pop.hidden = true;
+      }
+      function moveTA(row, el, d) {
+        if (!row.taMatches || !row.taMatches.length) return;
+        var n = row.taMatches.length;
+        row.taIdx = ((row.taIdx || 0) + d + n) % n;
+        qsa('.ta-item', el).forEach(function (item, i) {
+          item.classList.toggle('is-active', i === row.taIdx);
+          if (i === row.taIdx) item.scrollIntoView({ block: 'nearest' });
+        });
+      }
+      function pickProduct(row, el, p, focusQty) {
+        row.product = p; row.qty = 1; row.price = p.price;
+        el.querySelector('.line-product-input').value = p.name;
+        el.querySelector('.js-qty').value = '1';
+        el.querySelector('.js-price').value = p.price.toFixed(2);
+        closeTA(el);
+        updateLine(row, el); updateTotals();
+        if (focusQty) { var q = el.querySelector('.js-qty'); q.focus(); q.select(); }
+      }
+
+      function updateLine(row, el) {
+        var stockEl = el.querySelector('.js-stock'),
+            warnEl = el.querySelector('.js-warn'),
+            warnText = el.querySelector('.js-warn-text'),
+            qInput = el.querySelector('.js-qty');
+        if (!row.product) {
+          stockEl.textContent = ''; warnEl.hidden = true;
+          qInput.classList.remove('is-over');
+        } else {
+          stockEl.textContent = row.product.stock + ' in stock';
+          var over = row.qty > row.product.stock;
+          warnEl.hidden = !over;
+          if (over) warnText.textContent = row.product.stock === 0 ? 'Out of stock' : 'Only ' + row.product.stock + ' in stock';
+          qInput.classList.toggle('is-over', over);
+        }
+        el.querySelector('.js-total').textContent = fmt(row.product ? round2(row.qty * row.price) : 0);
+      }
+
+      /* ---- totals ---- */
+      function computeTotals() {
+        var subtotal = 0, units = 0, count = 0;
+        state.rows.forEach(function (r) {
+          if (r.product) { subtotal += r.qty * r.price; units += r.qty; count++; }
+        });
+        subtotal = round2(subtotal);
+        var dv = Math.max(0, parseFloat(qs('#discount-input').value) || 0);
+        var da = state.discountMode === 'percent' ? subtotal * dv / 100 : dv;
+        da = Math.min(round2(da), subtotal);
+        var base = round2(subtotal - da);
+        var tp = Math.min(100, Math.max(0, parseFloat(qs('#tax-input').value) || 0));
+        var tax = round2(base * tp / 100);
+        return { subtotal: subtotal, da: da, tax: tax, total: round2(base + tax), units: units, count: count, tp: tp };
+      }
+      function updateTotals() {
+        var t = computeTotals();
+        qs('#sum-subtotal').textContent = fmt(t.subtotal);
+        var applied = qs('#discount-applied');
+        applied.hidden = !(t.da > 0);
+        if (t.da > 0) applied.textContent = '− ' + fmt(t.da);
+        qs('#tax-amt').textContent = fmt(t.tax);
+        qs('#sum-total').textContent = fmt(t.total);
+        qs('#bb-total').textContent = fmt(t.total);
+        qs('#lines-count').textContent = t.count ? t.count + (t.count === 1 ? ' item' : ' items') : 'No items yet';
+        qs('#lines-units').textContent = t.units ? t.units + (t.units === 1 ? ' unit' : ' units') : '';
+      }
+
+      /* ---- scan / barcode ---- */
+      scanInput.addEventListener('keydown', function (e) {
+        if (e.key !== 'Enter') return;
+        e.preventDefault();
+        var sku = scanInput.value.trim();
+        if (!sku) return;
+        scanInput.value = '';                 /* free the box right away so the next scan isn't glued on */
+        findBySku(sku).then(function (p) {
+          if (!p) {
+            SM.toast('No product with SKU "' + sku + '"', 'error');
+            if (!scanInput.value) { scanInput.value = sku; scanInput.select(); }
+            return;
+          }
+          addOrIncrement(p, true);
+          scanInput.focus();
+        }).catch(function (err) {
+          SM.handleError(err);
+          if (!scanInput.value) { scanInput.value = sku; scanInput.select(); }
+        });
+      });
+      function addOrIncrement(p, viaScan) {
+        var existing = null;
+        state.rows.forEach(function (r) { if (r.product && r.product.id === p.id) existing = r; });
+        if (existing) {
+          existing.qty += 1;
+          var el = rowEl(existing);
+          el.querySelector('.js-qty').value = String(existing.qty);
+          updateLine(existing, el); updateTotals();
+          el.classList.remove('is-flash'); void el.offsetWidth; el.classList.add('is-flash');
+        } else {
+          var row = addRow(false);
+          pickProduct(row, rowEl(row), p, !viaScan);
+        }
+      }
+
+      /* ---- customer picker (server-side search, debounced) ---- */
+      var custBtn = qs('#customer-btn'), custPop = qs('#customer-pop'), custSearch = qs('#cust-search'), custList = qs('#cust-list');
+      var custRows = [], custSeq = 0;
+      function renderCustList() {
+        var html = '<button type="button" class="cust-item" data-name="' + esc(WALKIN.name) + '">' +
+          '<i data-lucide="user"></i><span>' + esc(WALKIN.name) + '</span><span class="c-sub">Default</span></button>';
+        custRows.forEach(function (c) {
+          html += '<button type="button" class="cust-item" data-id="' + esc(c.id) + '">' +
+            '<i data-lucide="user"></i><span>' + esc(c.name) + '</span>' +
+            '<span class="c-sub">' + esc(c.phone || c.email || '') + '</span></button>';
+        });
+        html += '<div class="cust-add"><button type="button" class="cust-item" id="cust-add"><i data-lucide="user-plus"></i>Add new customer</button></div>';
+        custList.innerHTML = html;
+        SM.icons();
+      }
+      function loadCustList() {
+        var seq = ++custSeq;
+        searchCustomers(custSearch.value).then(function (rows) {
+          if (seq !== custSeq) return;
+          custRows = rows; renderCustList();
+        }).catch(function (err) {
+          if (seq !== custSeq) return;
+          SM.handleError(err);
+        });
+      }
+      var loadCustListSoon = SM.debounce(loadCustList, 250);
+      function openCust() {
+        custSearch.value = '';
+        custRows = []; renderCustList();      /* Walk-in + "Add new customer" show instantly */
+        loadCustList();
+        custPop.hidden = false;
+        custBtn.setAttribute('aria-expanded', 'true');
+        custSearch.focus();
+      }
+      function closeCust() {
+        custPop.hidden = true;
+        custBtn.setAttribute('aria-expanded', 'false');
+      }
+      custBtn.addEventListener('click', function () { custPop.hidden ? openCust() : closeCust(); });
+      custSearch.addEventListener('input', loadCustListSoon);
+      custSearch.addEventListener('keydown', function (e) { if (e.key === 'Escape') { closeCust(); custBtn.focus(); } });
+      custList.addEventListener('click', function (e) {
+        if (e.target.closest('#cust-add')) {
+          closeCust();
+          qs('#nc-form').reset(); SM.clearFieldError(qs('#nc-name'));
+          SM.openModal(qs('#customer-overlay .modal'));
+          return;
+        }
+        var item = e.target.closest('.cust-item');
+        if (item) {
+          var id = item.dataset.id;
+          state.customer = id ? (custRows.filter(function (c) { return c.id === id; })[0] || WALKIN) : WALKIN;
+          qs('#customer-name').textContent = state.customer.name;
+          closeCust(); custBtn.focus();
+        }
+      });
+      document.addEventListener('click', function (e) {
+        if (!custPop.hidden && !e.target.closest('.customer-box')) closeCust();
+      });
+      var ncSubmit = qs('#nc-form button[type="submit"]');
+      qs('#nc-form').addEventListener('submit', function (e) {
+        e.preventDefault();
+        if (ncSubmit.disabled) return;
+        var name = qs('#nc-name').value.trim();
+        if (!name) { SM.setFieldError(qs('#nc-name'), 'Name is required.'); return; }
+        SM.setLoading(ncSubmit, true, 'Adding…');
+        SM.db.from('customers').insert({
+          shop_id: SM.ctx.shop.id,
+          name: name,
+          email: qs('#nc-email').value.trim() || null,
+          phone: qs('#nc-phone').value.trim() || null
+        }).select('id,name,email,phone').single().then(function (r) {
+          if (r.error) throw r.error;
+          state.customer = r.data;
+          qs('#customer-name').textContent = r.data.name;
+          SM.closeModal(qs('#customer-overlay .modal'));
+          SM.toast('Customer added', 'success'); /* same verb as the button */
+        }).catch(SM.handleError).then(function () {
+          SM.setLoading(ncSubmit, false);
+        });
+      });
+
+      /* ---- summary controls ---- */
+      qsa('.seg-mini button').forEach(function (b) {
+        b.addEventListener('click', function () {
+          state.discountMode = b.dataset.dmode;
+          qsa('.seg-mini button').forEach(function (x) {
+            var on = x === b;
+            x.classList.toggle('is-selected', on);
+            x.setAttribute('aria-pressed', String(on));
+          });
+          var di = qs('#discount-input');
+          di.value = '0'; di.max = state.discountMode === 'percent' ? '100' : null;
+          updateTotals();
+        });
+      });
+      qs('#discount-input').addEventListener('input', updateTotals);
+      qs('#tax-input').addEventListener('input', updateTotals);
+      qsa('[data-pay]').forEach(function (b) {
+        b.addEventListener('click', function () {
+          state.payment = b.dataset.pay;
+          qsa('[data-pay]').forEach(function (x) {
+            var on = x === b;
+            x.classList.toggle('is-selected', on);
+            x.setAttribute('aria-pressed', String(on));
+          });
+          qs('#paid-field').hidden = state.payment !== 'partial';
+          SM.clearFieldError(qs('#paid-input'));
+          if (state.payment === 'partial') qs('#paid-input').focus();
+        });
+      });
+
+      /* ---- save ---- */
+      function hasContent() {
+        return state.rows.some(function (r) { return r.product; }) ||
+          qs('#notes-input').value.trim() !== '' ||
+          state.customer !== WALKIN ||
+          (parseFloat(qs('#discount-input').value) || 0) > 0;
+      }
+      /* returns the create_order RPC arguments, or null after showing the validation message */
+      function validate() {
+        var items = [], firstEmpty = null, firstQty = null;
+        state.rows.forEach(function (r) {
+          if (!r.product) { if (!firstEmpty) firstEmpty = r; return; }
+          if (!(r.qty >= 1) && !firstQty) firstQty = r;
+          items.push({ product_id: r.product.id, qty: r.qty, unit_price: round2(r.price) });
+        });
+        if (!items.length) {
+          SM.toast('Add at least one product to the order', 'error');
+          var el = rowEl(firstEmpty || state.rows[0]);
+          if (el) el.querySelector('.line-product-input').focus();
+          return null;
+        }
+        if (firstQty) {
+          SM.toast('Every line needs a quantity of 1 or more', 'error');
+          rowEl(firstQty).querySelector('.js-qty').focus();
+          return null;
+        }
+        var t = computeTotals();   /* preview only: the server recalculates every total */
+        var paid = 0;
+        if (state.payment === 'partial') {
+          paid = parseFloat(qs('#paid-input').value);
+          if (isNaN(paid) || paid <= 0) { SM.setFieldError(qs('#paid-input'), 'Enter the amount paid.'); qs('#paid-input').focus(); return null; }
+          if (paid > t.total) { SM.setFieldError(qs('#paid-input'), "Can't be more than the total (" + fmt(t.total) + ').'); qs('#paid-input').focus(); return null; }
+          paid = round2(paid);
+        }
+        return {
+          p_customer_id: state.customer.walkin ? null : state.customer.id,
+          p_items: items,
+          p_discount_mode: state.discountMode,
+          p_discount_value: Math.max(0, parseFloat(qs('#discount-input').value) || 0),
+          p_tax_rate: t.tp,
+          p_payment: state.payment,
+          p_paid: paid,
+          p_payment_method: METHODS[qs('#method-select').value] || 'cash',
+          p_notes: qs('#notes-input').value.trim() || null
+        };
+      }
+      function resetForm() {
+        tbody.innerHTML = '';
+        state.rows = [];
+        state.customer = WALKIN; qs('#customer-name').textContent = WALKIN.name;
+        state.discountMode = 'amount';
+        qsa('.seg-mini button').forEach(function (x) {
+          var on = x.dataset.dmode === 'amount';
+          x.classList.toggle('is-selected', on); x.setAttribute('aria-pressed', String(on));
+        });
+        qs('#discount-input').value = '0'; qs('#discount-input').max = null;
+        qs('#tax-input').value = String(DEFAULT_TAX);
+        state.payment = 'unpaid';
+        qsa('[data-pay]').forEach(function (x) {
+          var on = x.dataset.pay === 'unpaid';
+          x.classList.toggle('is-selected', on); x.setAttribute('aria-pressed', String(on));
+        });
+        qs('#paid-field').hidden = true;
+        qs('#paid-input').value = '';
+        SM.clearFieldError(qs('#paid-input'));
+        qs('#method-select').value = 'Cash';
+        qs('#notes-input').value = '';
+        addRow(true);
+        updateTotals();
+      }
+      function saveOrder(again, btn) {
+        if (saving) return;                       /* one save at a time (buttons, mobile bar, Ctrl+Enter) */
+        var args = validate();
+        if (!args) return;
+        saving = true;
+        var leaving = false;
+        SM.setLoading(btn, true, 'Saving…');
+        SM.db.rpc('create_order', args).then(function (r) {
+          if (r.error) throw r.error;
+          var order = r.data;
+          SM.toast('Order saved', 'success'); /* same verb as "Save order" */
+          if (again) resetForm();
+          else {
+            leaving = true;                       /* stay locked until the page changes: no duplicate orders */
+            setTimeout(function () { window.location.assign('orders.html#' + order.number); }, 600);
+          }
+        }).catch(SM.handleError).then(function () {
+          if (leaving) return;
+          saving = false;
+          SM.setLoading(btn, false);
+        });
+      }
+      qsa('.js-save').forEach(function (b) { b.addEventListener('click', function () { saveOrder(false, b); }); });
+      qsa('.js-save-again').forEach(function (b) { b.addEventListener('click', function () { saveOrder(true, b); }); });
+      document.addEventListener('keydown', function (e) {
+        if ((e.ctrlKey || e.metaKey) && e.key === 'Enter' && !qsa('.overlay.is-open').length) {
+          e.preventDefault(); saveOrder(false, qsa('.js-save')[0]);
+        }
+      });
+
+      /* ---- cancel ---- */
+      qs('#cancel-btn').addEventListener('click', function () {
+        if (hasContent()) SM.openModal(qs('#discard-overlay .modal'));
+        else window.location.assign('orders.html');
+      });
+      qs('#discard-confirm').addEventListener('click', function () {
+        SM.closeModal(qs('#discard-overlay .modal'));
+        window.location.assign('orders.html');
+      });
+
+      /* ---- boot ---- */
+      (async function init() {
+        var params = new URLSearchParams(window.location.search);
+        var demo = params.get('state');
+        function show(el) {
+          [qs('#order-skeleton'), qs('#order-loaded'), qs('#order-empty'), qs('#order-error')].forEach(function (x) { x.hidden = x !== el; });
+          SM.icons();
+        }
+        if (demo === 'error') { show(qs('#order-error')); return; }
+        try {
+          var session = await SM.requireAuth();
+          if (!session) return;                              /* redirecting to login.html */
+          var ctx = await SM.loadContext();
+          DEFAULT_TAX = Number(ctx.shop.tax_rate) || 0;
+          var amtBtn = qs('.seg-mini [data-dmode="amount"]');
+          if (amtBtn) amtBtn.textContent = ctx.shop.currency;  /* was a hard-coded "$" */
+
+          if (demo === 'empty') { show(qs('#order-empty')); return; }
+          var res = await SM.db.from('products').select('id', { count: 'exact', head: true }).eq('active', true);
+          if (res.error) throw res.error;
+          if (!res.count) { show(qs('#order-empty')); return; }
+
+          show(qs('#order-loaded'));
+          qs('#tax-input').value = String(DEFAULT_TAX);
+          addRow(true);
+          updateTotals();
+        } catch (err) {
+          SM.handleError(err);
+          show(qs('#order-error'));
+        }
+      })();
+
+      SM.initShell();
+    })();
+  </script>
+</body>
+</html>

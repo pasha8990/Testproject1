@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Reports · Shop Manager</title>
+  <script>
+    (function () {
+      try {
+        var t = localStorage.getItem('sm-theme') ||
+          (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+        document.documentElement.setAttribute('data-theme', t);
+      } catch (e) {}
+    })();
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/lucide@0.294.0"></script>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body data-nav="reports">
+
+  <!-- ===== Shared shell ===== -->
+  <div class="sidebar-overlay" id="sidebar-overlay"></div>
+  <aside class="sidebar" id="sidebar" aria-label="Main navigation">
+    <div class="sidebar-header">
+      <a class="brand" href="dashboard.html"><span class="brand-mark"><i data-lucide="store"></i></span>Shop Manager</a>
+    </div>
+    <nav class="sidebar-nav">
+      <a class="nav-link" data-nav="dashboard" href="dashboard.html"><i data-lucide="layout-dashboard"></i>Dashboard</a>
+      <a class="nav-link" data-nav="products" href="products.html"><i data-lucide="package"></i>Products</a>
+      <a class="nav-link" data-nav="orders" href="orders.html"><i data-lucide="shopping-cart"></i>Orders</a>
+      <a class="nav-link" data-nav="customers" href="customers.html"><i data-lucide="users"></i>Customers</a>
+      <a class="nav-link" data-nav="suppliers" href="suppliers.html"><i data-lucide="truck"></i>Suppliers</a>
+      <a class="nav-link" data-nav="purchases" href="purchases.html"><i data-lucide="clipboard-list"></i>Purchases</a>
+      <a class="nav-link" data-nav="expenses" href="expenses.html"><i data-lucide="wallet"></i>Expenses</a>
+      <a class="nav-link" data-nav="reports" href="reports.html"><i data-lucide="bar-chart-3"></i>Reports</a>
+      <a class="nav-link" data-nav="settings" href="settings.html"><i data-lucide="settings"></i>Settings</a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-row">
+        <span class="avatar">MC</span>
+        <span class="user-meta"><span class="user-name">Maya Chen</span><span class="user-role">Manager</span></span>
+      </div>
+      <div class="sidebar-footer-row">
+        <span class="text-3" style="font-size:12px;">Northwind Supply Co.</span>
+        <button type="button" class="btn btn-ghost btn-icon btn-sm" data-theme-toggle aria-label="Toggle theme">
+          <i data-lucide="sun" class="i-sun is-hidden"></i><i data-lucide="moon" class="i-moon"></i>
+        </button>
+      </div>
+    </div>
+  </aside>
+  <header class="topbar">
+    <button type="button" class="btn btn-ghost btn-icon" id="nav-toggle" aria-label="Open menu" aria-expanded="false" aria-controls="sidebar">
+      <i data-lucide="menu"></i>
+    </button>
+    <a class="brand" href="dashboard.html"><span class="brand-mark"><i data-lucide="store"></i></span><span class="topbar-title">Shop Manager</span></a>
+    <span class="spacer"></span>
+    <button type="button" class="btn btn-ghost btn-icon" data-theme-toggle aria-label="Toggle theme">
+      <i data-lucide="sun" class="i-sun is-hidden"></i><i data-lucide="moon" class="i-moon"></i>
+    </button>
+  </header>
+  <!-- ===== End shared shell ===== -->
+
+  <main class="main">
+    <!-- skeleton -->
+    <div id="rep-skeleton" aria-hidden="true">
+      <div class="page-header"><div class="skeleton sk-line" style="width:110px;height:20px"></div><div class="skeleton sk-line" style="width:130px;height:44px"></div></div>
+      <div class="skeleton sk-line" style="width:380px;height:36px;margin-bottom:16px"></div>
+      <div class="stat-grid-auto mb-16">
+        <div class="card sk-card"><div class="skeleton sk-line" style="width:60%"></div><div class="skeleton sk-value"></div></div>
+        <div class="card sk-card"><div class="skeleton sk-line" style="width:50%"></div><div class="skeleton sk-value"></div></div>
+        <div class="card sk-card"><div class="skeleton sk-line" style="width:55%"></div><div class="skeleton sk-value"></div></div>
+        <div class="card sk-card"><div class="skeleton sk-line" style="width:45%"></div><div class="skeleton sk-value"></div></div>
+        <div class="card sk-card"><div class="skeleton sk-line" style="width:60%"></div><div class="skeleton sk-value"></div></div>
+      </div>
+      <div class="card mb-16"><div class="card-body"><div class="skeleton sk-block" style="height:240px"></div></div></div>
+      <div class="charts-grid">
+        <div class="card"><div class="card-body"><div class="skeleton sk-block" style="height:200px"></div></div></div>
+        <div class="card"><div class="card-body"><div class="skeleton sk-block" style="height:200px"></div></div></div>
+        <div class="card"><div class="card-body"><div class="skeleton sk-block" style="height:200px"></div></div></div>
+      </div>
+    </div>
+
+    <!-- error (reports.html?state=error) -->
+    <div class="card" id="rep-error" hidden>
+      <div class="error-state">
+        <div class="empty-icon"><i data-lucide="cloud-off"></i></div>
+        <h1 class="empty-title">Couldn't load reports</h1>
+        <p class="empty-desc">We couldn't reach the server. Check your connection and try again.</p>
+        <button type="button" class="btn btn-primary" onclick="window.location.reload()">Try again</button>
+      </div>
+    </div>
+
+    <!-- loaded -->
+    <div id="rep-loaded" hidden>
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">Reports</h1>
+          <p class="page-sub">Sales performance and profit for the selected period.</p>
+        </div>
+        <div class="page-actions">
+          <button type="button" class="btn btn-secondary" id="export-btn"><i data-lucide="download"></i>Export</button>
+        </div>
+      </div>
+
+      <!-- presets -->
+      <div class="table-toolbar" role="group" aria-label="Date range presets">
+        <button type="button" class="chip" data-preset="today">Today</button>
+        <button type="button" class="chip" data-preset="7d">7 days</button>
+        <button type="button" class="chip is-selected" data-preset="30d">30 days</button>
+        <button type="button" class="chip" data-preset="month">This month</button>
+        <button type="button" class="chip" data-preset="custom">Custom</button>
+        <span class="spacer"></span>
+        <span class="range-label" id="range-label" aria-live="polite"></span>
+      </div>
+
+      <!-- custom range -->
+      <div class="range-custom" id="range-custom" hidden>
+        <div class="field">
+          <label class="label" for="from-date">From</label>
+          <input class="input" type="date" id="from-date">
+        </div>
+        <div class="field">
+          <label class="label" for="to-date">To</label>
+          <input class="input" type="date" id="to-date">
+        </div>
+        <button type="button" class="btn btn-primary" id="apply-range">Apply</button>
+        <p class="field-error" id="range-error" hidden></p>
+      </div>
+
+      <!-- summary -->
+      <div class="stat-grid-auto" id="rep-cards"></div>
+
+      <!-- no sales in range -->
+      <div class="card" id="rep-nosales" hidden>
+        <div class="empty-state">
+          <div class="empty-icon"><i data-lucide="chart-no-axes-column"></i></div>
+          <h2 class="empty-title">No sales in this period</h2>
+          <p class="empty-desc">Try a wider date range, or take some orders first.</p>
+          <button type="button" class="btn btn-secondary" id="widen-range">Show last 30 days</button>
+        </div>
+      </div>
+
+      <!-- revenue trend -->
+      <section class="card mb-16" aria-label="Revenue over time">
+        <div class="card-header"><h2 class="card-title">Revenue over time</h2></div>
+        <div class="card-body">
+          <div class="chart-box">
+            <canvas id="ch-revenue" role="img" aria-label="Line chart of revenue over time"></canvas>
+          </div>
+        </div>
+      </section>
+
+      <div class="charts-grid">
+        <section class="card chart-span" aria-label="Top products">
+          <div class="card-header"><h2 class="card-title">Top products</h2></div>
+          <div class="card-body">
+            <div class="chart-box--sm"><canvas id="ch-products" role="img" aria-label="Horizontal bar chart of top products by revenue"></canvas></div>
+          </div>
+        </section>
+        <section class="card" aria-label="Sales by category">
+          <div class="card-header"><h2 class="card-title">Sales by category</h2></div>
+          <div class="card-body">
+            <div class="chart-box--sm"><canvas id="ch-category" role="img" aria-label="Donut chart of sales by category"></canvas></div>
+          </div>
+        </section>
+        <section class="card" aria-label="Sales by payment status">
+          <div class="card-header"><h2 class="card-title">By payment status</h2></div>
+          <div class="card-body">
+            <div class="chart-box--sm"><canvas id="ch-payment" role="img" aria-label="Donut chart of sales by payment status"></canvas></div>
+          </div>
+        </section>
+      </div>
+
+      <!-- tables -->
+      <div class="rep-tables">
+        <section class="card card--flush" aria-label="Best sellers">
+          <div class="card-header"><h2 class="card-title">Best sellers</h2></div>
+          <div class="table-wrap table-plain" id="best-card">
+            <table class="table table-responsive">
+              <thead><tr>
+                <th><button type="button" class="th-sort" data-sort="name">Product<i data-lucide="chevrons-up-down"></i></button></th>
+                <th class="num"><button type="button" class="th-sort" data-sort="units">Units<i data-lucide="chevrons-up-down"></i></button></th>
+                <th class="num"><button type="button" class="th-sort" data-sort="revenue">Revenue<i data-lucide="chevrons-up-down"></i></button></th>
+              </tr></thead>
+              <tbody id="best-body"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="card card--flush" aria-label="Slow movers">
+          <div class="card-header">
+            <h2 class="card-title">Slow movers</h2>
+            <span class="cell-muted" style="font-size:12px;">No sales in this period</span>
+          </div>
+          <div class="table-wrap table-plain" id="slow-card">
+            <table class="table table-responsive">
+              <thead><tr>
+                <th><button type="button" class="th-sort" data-sort="name">Product<i data-lucide="chevrons-up-down"></i></button></th>
+                <th class="num"><button type="button" class="th-sort" data-sort="stock">In stock<i data-lucide="chevrons-up-down"></i></button></th>
+                <th><button type="button" class="th-sort" data-sort="last">Last sold<i data-lucide="chevrons-up-down"></i></button></th>
+              </tr></thead>
+              <tbody id="slow-body"></tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+    </div>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+  <script>
+    (function () {
+      var qs = SM.qs, qsa = SM.qsa, fmt = SM.formatMoney, esc = SM.escapeHtml;
+
+      var PALETTE = ['#3b5bdb', '#7048e8', '#1098ad', '#0ca678', '#f59f00', '#e8590c', '#e03131', '#ae3ec9', '#4c6ef5', '#15aabf'];
+      var MAX_RANGE_DAYS = 732;      /* guard so a typo can't ask the DB for decades of days */
+      var LAST_SOLD_CHUNK = 80;      /* product ids per "last sold" lookup */
+      var LAST_SOLD_MAX_CHUNKS = 8;
+      var charts = [];
+      var tz = 'UTC';                /* shop timezone, set from SM.loadContext() */
+      var state = { preset: '30d', custom: null }; /* what is currently on screen */
+      var lastData = null;
+      var reqId = 0;                 /* ignore responses from superseded requests */
+
+      /* ---------- range helpers (days are SHOP-timezone days, like the RPCs) ---------- */
+      function pad(n) { return ('0' + n).slice(-2); }
+      function zoneParts(date) {
+        try {
+          var o = {};
+          new Intl.DateTimeFormat('en-US', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', hourCycle: 'h23' })
+            .formatToParts(date).forEach(function (p) { o[p.type] = p.value; });
+          return { y: +o.year, m: +o.month, d: +o.day, h: (+o.hour) % 24 };
+        } catch (e) { /* invalid tz string: fall back to the browser's clock */
+          return { y: date.getFullYear(), m: date.getMonth() + 1, d: date.getDate(), h: date.getHours() };
+        }
+      }
+      function dayStart(d) { var x = new Date(d); x.setHours(0, 0, 0, 0); return x; }
+      function addDays(d, n) { var x = new Date(d); x.setDate(x.getDate() + n); return x; }
+      function today() { var p = zoneParts(new Date()); return new Date(p.y, p.m - 1, p.d); }
+      function isoDate(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
+      function parseDay(s) { var a = String(s).split('-'); return new Date(+a[0], +a[1] - 1, +a[2]); }
+      function rangeFor(preset, custom) {
+        var t = today();
+        if (preset === 'today') return { from: t, to: t };
+        if (preset === '7d') return { from: addDays(t, -6), to: t };
+        if (preset === '30d') return { from: addDays(t, -29), to: t };
+        if (preset === 'month') return { from: new Date(t.getFullYear(), t.getMonth(), 1), to: t };
+        return custom || { from: addDays(t, -29), to: t };
+      }
+      function rangeLabel(r) {
+        var opts = { month: 'short', day: 'numeric' };
+        if (r.from.getTime() === r.to.getTime()) return r.from.toLocaleDateString('en-US', opts);
+        var y = r.from.getFullYear() !== r.to.getFullYear() ? { year: 'numeric' } : {};
+        return r.from.toLocaleDateString('en-US', Object.assign({ month: 'short', day: 'numeric' }, y)) +
+          ' – ' + r.to.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      }
+      function r2(n) { return Math.round(Number(n || 0) * 100) / 100; }
+
+      /* ---------- data layer (Supabase) ---------- */
+      /* Single-day ranges show an hourly chart. No RPC returns hours, so read that one day's
+         orders (read-only) and bucket them by hour in the shop timezone. */
+      async function fetchHourly(r) {
+        var day = isoDate(r.from), vals = [], h;
+        for (h = 0; h < 24; h++) vals.push(0);
+        var lo = new Date(r.from.getFullYear(), r.from.getMonth(), r.from.getDate() - 2).toISOString();
+        var hi = new Date(r.from.getFullYear(), r.from.getMonth(), r.from.getDate() + 3).toISOString();
+        for (var page = 0; page < 10; page++) {
+          var res = await SM.db.from('orders').select('total,created_at')
+            .neq('status', 'cancelled').gte('created_at', lo).lt('created_at', hi)
+            .order('created_at', { ascending: true }).order('id', { ascending: true })
+            .range(page * 1000, page * 1000 + 999);
+          if (res.error) throw res.error;
+          res.data.forEach(function (o) {
+            var p = zoneParts(new Date(o.created_at));
+            if (p.y + '-' + pad(p.m) + '-' + pad(p.d) === day) vals[p.h] += Number(o.total);
+          });
+          if (res.data.length < 1000) break;
+        }
+        return vals.map(r2);
+      }
+
+      /* Last sold date for slow movers (product_sales has no such column).
+         Returns { productId: ms | null (never sold) }; ids that could not be resolved are omitted. */
+      async function fetchLastSold(ids) {
+        var out = {}, chunks = [];
+        for (var i = 0; i < ids.length && chunks.length < LAST_SOLD_MAX_CHUNKS; i += LAST_SOLD_CHUNK) {
+          chunks.push(ids.slice(i, i + LAST_SOLD_CHUNK));
+        }
+        var results = await Promise.all(chunks.map(function (chunk) {
+          return SM.db.from('orders').select('created_at,order_items!inner(product_id)')
+            .neq('status', 'cancelled').in('order_items.product_id', chunk)
+            .order('created_at', { ascending: false }).limit(1000);
+        }));
+        results.forEach(function (res, ci) {
+          if (res.error) throw res.error;
+          var found = {};
+          res.data.forEach(function (o) { /* newest first: first hit per product is its last sale */
+            (o.order_items || []).forEach(function (it) {
+              if (!(it.product_id in found)) found[it.product_id] = new Date(o.created_at).getTime();
+            });
+          });
+          var truncated = res.data.length >= 1000;
+          chunks[ci].forEach(function (id) {
+            if (id in found) out[id] = found[id];
+            else if (!truncated) out[id] = null; /* complete result and no match => never sold */
+          });
+        });
+        return out;
+      }
+
+      async function loadReport(r) {
+        var from = isoDate(r.from), to = isoDate(r.to), single = from === to;
+        var args = { p_from: from, p_to: to };
+        var parts = await Promise.all([
+          SM.db.rpc('report_summary', args),
+          SM.db.rpc('product_sales', args),
+          SM.db.rpc('category_sales', args),
+          SM.db.rpc('payment_status_breakdown', args),
+          single ? fetchHourly(r) : SM.db.rpc('sales_by_day', args),
+          SM.db.from('products').select('id').eq('active', false)
+        ]);
+        [parts[0], parts[1], parts[2], parts[3], parts[5]].forEach(function (x) { if (x.error) throw x.error; });
+        if (!single && parts[4].error) throw parts[4].error;
+
+        var s = (parts[0].data && parts[0].data[0]) || {};
+        var rows = parts[1].data || [];
+        var inactive = {};
+        (parts[5].data || []).forEach(function (p) { inactive[p.id] = 1; });
+
+        /* cost of goods = sum(qty * unit_cost) = sum(line revenue - line gross profit) over products */
+        var cogs = 0;
+        rows.forEach(function (p) { cogs += Number(p.revenue) - Number(p.gross_profit); });
+
+        var top = rows.filter(function (p) { return Number(p.units_sold) > 0; })
+          .map(function (p) { return { name: p.name, units: Number(p.units_sold), revenue: Number(p.revenue) }; })
+          .sort(function (a, b) { return b.revenue - a.revenue; }).slice(0, 10);
+
+        var slow = rows.filter(function (p) { return Number(p.units_sold) === 0 && !inactive[p.product_id]; })
+          .map(function (p) { return { id: p.product_id, name: p.name, stock: Number(p.stock), last: null, lastKnown: false }; });
+        if (slow.length) {
+          var last = await fetchLastSold(slow.map(function (p) { return p.id; }));
+          slow.forEach(function (p) {
+            if (p.id in last) { p.last = last[p.id]; p.lastKnown = true; }
+          });
+        }
+
+        var trend = { labels: [], values: [] };
+        if (single) {
+          for (var h = 0; h < 24; h++) {
+            trend.labels.push(h === 0 ? '12 AM' : h < 12 ? h + ' AM' : h === 12 ? '12 PM' : (h - 12) + ' PM');
+            trend.values.push(parts[4][h]);
+          }
+        } else {
+          (parts[4].data || []).forEach(function (row) {
+            trend.labels.push(parseDay(row.day).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+            trend.values.push(r2(row.revenue));
+          });
+        }
+
+        var categories = (parts[2].data || [])
+          .map(function (c) { return { name: c.category === 'Uncategorized' ? 'No category' : c.category, revenue: Number(c.revenue) }; })
+          .filter(function (c) { return c.revenue > 0; })
+          .sort(function (a, b) { return b.revenue - a.revenue; });
+
+        var payments = { unpaid: 0, partial: 0, paid: 0 };
+        (parts[3].data || []).forEach(function (p) { payments[p.payment_status] = Number(p.total); });
+
+        return {
+          r: r, singleDay: single,
+          ordersCount: Number(s.orders_count || 0), units: Number(s.units_sold || 0),
+          revenue: r2(s.revenue), cogs: r2(cogs), gross: r2(s.gross_profit),
+          expenses: r2(s.expenses_total), net: r2(s.net_profit),
+          trend: trend, top: top, categories: categories, payments: payments, slow: slow
+        };
+      }
+
+      /* Returns the data, or null if a newer request replaced this one. Throws on error. */
+      async function load(r) {
+        var id = ++reqId, box = qs('#rep-loaded');
+        box.setAttribute('aria-busy', 'true');
+        box.style.opacity = '.6';
+        try {
+          var d = await loadReport(r);
+          return id === reqId ? d : null;
+        } finally {
+          if (id === reqId) { box.removeAttribute('aria-busy'); box.style.opacity = ''; }
+        }
+      }
+
+      /* ---------- summary cards ---------- */
+      function renderCards(d) {
+        var margin = d.revenue ? Math.round(d.gross / d.revenue * 100) : 0;
+        function card(label, value, hint, danger) {
+          return '<div class="card stat-card">' +
+            '<span class="stat-label">' + label + '</span>' +
+            '<span class="stat-value' + (danger ? ' is-danger' : '') + '">' + value + '</span>' +
+            '<span class="stat-hint">' + hint + '</span></div>';
+        }
+        qs('#rep-cards').innerHTML =
+          card('Revenue', fmt(d.revenue), d.ordersCount + (d.ordersCount === 1 ? ' order' : ' orders') + ' · ' + d.units + ' units') +
+          card('Cost of goods', fmt(d.cogs), 'Stock you sold, at cost') +
+          card('Gross profit', fmt(d.gross), margin + '% margin' + (d.revenue ? '' : ' — no sales')) +
+          card('Expenses', fmt(d.expenses), 'Logged in the period') +
+          card('Net profit', fmt(d.net), d.net < 0 ? 'Below break-even' : 'After expenses', d.net < 0);
+      }
+
+      /* ---------- charts ---------- */
+      function themeVars() {
+        var cs = getComputedStyle(document.documentElement);
+        function v(n) { return cs.getPropertyValue(n).trim(); }
+        return { line: v('--primary'), grid: v('--border'), tick: v('--text-3'), text2: v('--text-2'),
+                 soft: v('--primary-soft'), success: v('--success'), warning: v('--warning'), dangerText: v('--danger-text') };
+      }
+      function destroyCharts() {
+        charts.forEach(function (c) { c.destroy(); });
+        charts = [];
+      }
+      var LEGEND = { position: 'bottom', labels: { boxWidth: 10, boxHeight: 10, padding: 12, font: { size: 11 } } };
+
+      function renderCharts(d) {
+        if (typeof Chart === 'undefined') {
+          qsa('.chart-box, .chart-box--sm').forEach(function (box) {
+            if (!box.querySelector('p')) box.innerHTML = '<p class="muted" style="padding:16px 0;">Chart library failed to load. Check your connection and refresh.</p>';
+          });
+          return;
+        }
+        destroyCharts();
+        var v = themeVars();
+        var common = { responsive: true, maintainAspectRatio: false };
+        var surface = getComputedStyle(document.documentElement).getPropertyValue('--surface').trim() || '#fff';
+
+        /* revenue line */
+        charts.push(new Chart(qs('#ch-revenue'), {
+          type: 'line',
+          data: { labels: d.trend.labels, datasets: [{ data: d.trend.values, borderColor: v.line, backgroundColor: v.soft, fill: true, tension: 0.35, borderWidth: 2, pointRadius: 0, pointHoverRadius: 4, pointHitRadius: 12 }] },
+          options: Object.assign({}, common, {
+            interaction: { mode: 'index', intersect: false },
+            plugins: { legend: { display: false }, tooltip: { callbacks: { label: function (c) { return ' ' + fmt(c.parsed.y); } } } },
+            scales: {
+              x: { grid: { display: false }, ticks: { color: v.tick, maxTicksLimit: 7, font: { size: 11 } } },
+              y: { beginAtZero: true, border: { display: false }, grid: { color: v.grid },
+                   ticks: { color: v.tick, maxTicksLimit: 5, font: { size: 11 }, callback: function (x) { return SM.moneyTick(x); } } }
+            }
+          })
+        }));
+
+        /* top products horizontal bars */
+        var tp = d.top.slice().reverse();
+        charts.push(new Chart(qs('#ch-products'), {
+          type: 'bar',
+          data: { labels: tp.map(function (p) { return p.name.length > 22 ? p.name.slice(0, 21) + '…' : p.name; }),
+                  datasets: [{ data: tp.map(function (p) { return r2(p.revenue); }), backgroundColor: v.line, borderRadius: 4, maxBarThickness: 18 }] },
+          options: Object.assign({}, common, {
+            indexAxis: 'y',
+            plugins: { legend: { display: false }, tooltip: { callbacks: { label: function (c) {
+              var p = tp[c.dataIndex]; return ' ' + fmt(p.revenue) + ' · ' + p.units + ' units'; } } } },
+            scales: {
+              x: { beginAtZero: true, border: { display: false }, grid: { color: v.grid },
+                   ticks: { color: v.tick, maxTicksLimit: 5, font: { size: 11 }, callback: function (x) { return SM.moneyTick(x); } } },
+              y: { border: { display: false }, grid: { display: false }, ticks: { color: v.tick, font: { size: 11 } } }
+            }
+          })
+        }));
+
+        /* category donut */
+        charts.push(new Chart(qs('#ch-category'), {
+          type: 'doughnut',
+          data: { labels: d.categories.map(function (c) { return c.name; }),
+                  datasets: [{ data: d.categories.map(function (c) { return r2(c.revenue); }), backgroundColor: PALETTE, borderWidth: 2, borderColor: surface }] },
+          options: Object.assign({}, common, { cutout: '62%', plugins: { legend: LEGEND, tooltip: { callbacks: { label: function (c) { return ' ' + c.label + ': ' + fmt(c.parsed); } } } } })
+        }));
+
+        /* payment donut */
+        var pays = ['paid', 'partial', 'unpaid'];
+        var payColors = [v.success, v.warning, v.dangerText];
+        charts.push(new Chart(qs('#ch-payment'), {
+          type: 'doughnut',
+          data: { labels: ['Paid', 'Partial', 'Unpaid'],
+                  datasets: [{ data: pays.map(function (k) { return r2(d.payments[k]); }), backgroundColor: payColors, borderWidth: 2, borderColor: surface }] },
+          options: Object.assign({}, common, { cutout: '62%', plugins: { legend: LEGEND, tooltip: { callbacks: { label: function (c) { return ' ' + c.label + ': ' + fmt(c.parsed); } } } } })
+        }));
+      }
+      SM.onTheme(function () { if (lastData && qs('#rep-nosales').hidden) { renderCharts(lastData); } });
+
+      /* ---------- tables ---------- */
+      var sortBest = { key: 'revenue', dir: -1 };
+      var sortSlow = { key: 'stock', dir: -1 };
+      function paintSort(cardSel, st) {
+        qsa(cardSel + ' .th-sort').forEach(function (b) {
+          var on = b.dataset.sort === st.key;
+          b.classList.toggle('is-sorted', on);
+          var icon = on ? (st.dir === 1 ? 'chevron-up' : 'chevron-down') : 'chevrons-up-down';
+          b.innerHTML = b.childNodes[0].textContent + '<i data-lucide="' + icon + '"></i>';
+        });
+      }
+      function renderTables(d) {
+        var best = d.top.slice();
+        var k = sortBest.key, dir = sortBest.dir;
+        best.sort(function (a, b) {
+          if (k === 'name') return a.name.localeCompare(b.name) * dir;
+          return (a[k] - b[k]) * dir;
+        });
+        qs('#best-body').innerHTML = best.length ? best.map(function (p) {
+          return '<tr>' +
+            '<td data-label="Product">' + esc(p.name) + '</td>' +
+            '<td data-label="Units" class="num">' + p.units + '</td>' +
+            '<td data-label="Revenue" class="num cell-strong">' + fmt(r2(p.revenue)) + '</td></tr>';
+        }).join('') : '<tr><td colspan="3" class="cell-muted" style="text-align:center;padding:20px;">Nothing sold in this period</td></tr>';
+
+        var slow = d.slow.slice();
+        k = sortSlow.key; dir = sortSlow.dir;
+        slow.sort(function (a, b) {
+          if (k === 'name') return a.name.localeCompare(b.name) * dir;
+          if (k === 'stock') return (a.stock - b.stock) * dir;
+          var la = a.last || 0, lb = b.last || 0;
+          return (la - lb) * dir;
+        });
+        qs('#slow-body').innerHTML = slow.length ? slow.slice(0, 10).map(function (p) {
+          var lastCell = p.last ? SM.formatDate(p.last)
+            : p.lastKnown ? '<span class="cell-muted">Never</span>' : '<span class="cell-muted">—</span>';
+          return '<tr>' +
+            '<td data-label="Product">' + esc(p.name) + '</td>' +
+            '<td data-label="In stock" class="num">' + p.stock + '</td>' +
+            '<td data-label="Last sold">' + lastCell + '</td></tr>';
+        }).join('') : '<tr><td colspan="3" class="cell-muted" style="text-align:center;padding:20px;">Every product sold in this period</td></tr>';
+        paintSort('#best-card', sortBest);
+        paintSort('#slow-card', sortSlow);
+        SM.icons();
+      }
+      qs('#best-card').addEventListener('click', function (e) {
+        var b = e.target.closest('.th-sort'); if (!b) return;
+        if (sortBest.key === b.dataset.sort) sortBest.dir *= -1;
+        else sortBest = { key: b.dataset.sort, dir: b.dataset.sort === 'name' ? 1 : -1 };
+        if (lastData) renderTables(lastData);
+      });
+      qs('#slow-card').addEventListener('click', function (e) {
+        var b = e.target.closest('.th-sort'); if (!b) return;
+        if (sortSlow.key === b.dataset.sort) sortSlow.dir *= -1;
+        else sortSlow = { key: b.dataset.sort, dir: b.dataset.sort === 'name' ? 1 : -1 };
+        if (lastData) renderTables(lastData);
+      });
+
+      /* ---------- paint a loaded result ---------- */
+      function paint(d) {
+        lastData = d;
+        qs('#range-label').textContent = rangeLabel(d.r);
+        renderCards(d);
+        renderTables(d);
+        var nosales = d.revenue === 0 && d.ordersCount === 0;
+        qs('#rep-nosales').hidden = !nosales;
+        qsa('.charts-grid section').forEach(function (s) { s.hidden = nosales; });
+        qs('#ch-revenue').closest('.card').hidden = nosales;
+        if (!nosales) renderCharts(d);
+      }
+      function selectChip(preset) {
+        qsa('[data-preset]').forEach(function (c) { c.classList.toggle('is-selected', c.dataset.preset === preset); });
+        qs('#range-custom').hidden = preset !== 'custom';
+      }
+      /* after a failed load, put the chips back to what is actually on screen */
+      function revertChips() { selectChip(state.preset); }
+
+      /* ---------- preset chips + custom ---------- */
+      qsa('[data-preset]').forEach(function (chip) {
+        chip.addEventListener('click', async function () {
+          var preset = chip.dataset.preset;
+          qs('#range-error').hidden = true;
+          if (preset === 'custom') {
+            selectChip('custom');
+            var r = rangeFor('30d');
+            qs('#from-date').value = isoDate(state.custom ? state.custom.from : r.from);
+            qs('#to-date').value = isoDate(state.custom ? state.custom.to : r.to);
+            qs('#from-date').focus();
+            return;
+          }
+          selectChip(preset);
+          try {
+            var d = await load(rangeFor(preset));
+            if (!d) return;
+            state.preset = preset;
+            paint(d);
+          } catch (e) {
+            SM.handleError(e);
+            revertChips();
+          }
+        });
+      });
+      qs('#apply-range').addEventListener('click', async function () {
+        var btn = this, f = qs('#from-date').value, t = qs('#to-date').value, err = qs('#range-error');
+        if (!f || !t) { err.textContent = 'Pick both a start and end date.'; err.hidden = false; return; }
+        if (f > t) { err.textContent = 'The start date must be before the end date.'; err.hidden = false; return; }
+        var r = { from: dayStart(f + 'T12:00'), to: dayStart(t + 'T12:00') };
+        if ((r.to - r.from) / 864e5 > MAX_RANGE_DAYS) { err.textContent = 'Choose a range of 2 years or less.'; err.hidden = false; return; }
+        err.hidden = true;
+        SM.setLoading(btn, true, 'Applying…');
+        try {
+          var d = await load(r);
+          if (!d) return;
+          state.custom = r; state.preset = 'custom';
+          paint(d);
+        } catch (e) {
+          SM.handleError(e);
+        } finally {
+          SM.setLoading(btn, false);
+        }
+      });
+      qs('#widen-range').addEventListener('click', async function () {
+        var btn = this;
+        SM.setLoading(btn, true, 'Loading…');
+        try {
+          var d = await load(rangeFor('30d'));
+          if (!d) return;
+          state.preset = '30d';
+          selectChip('30d');
+          paint(d);
+        } catch (e) {
+          SM.handleError(e);
+        } finally {
+          SM.setLoading(btn, false);
+        }
+      });
+
+      /* ---------- export ---------- */
+      function csvCell(s) { /* quote + neutralise spreadsheet formulas coming from product names */
+        s = String(s);
+        if (/^[=+\-@\t\r]/.test(s)) s = "'" + s;
+        return '"' + s.replace(/"/g, '""') + '"';
+      }
+      qs('#export-btn').addEventListener('click', function () {
+        if (!lastData) return;
+        var d = lastData, r = d.r;
+        var lines = [
+          'Shop Manager report,' + rangeLabel(r),
+          '',
+          'Revenue,"' + fmt(d.revenue) + '"',
+          'Cost of goods,"' + fmt(d.cogs) + '"',
+          'Gross profit,"' + fmt(d.gross) + '"',
+          'Expenses,"' + fmt(d.expenses) + '"',
+          'Net profit,"' + fmt(d.net) + '"',
+          '',
+          'Best sellers',
+          'product,units,revenue'
+        ];
+        d.top.forEach(function (p) {
+          lines.push(csvCell(p.name) + ',' + p.units + ',' + p.revenue.toFixed(2));
+        });
+        var blob = new Blob([lines.join('\n')], { type: 'text/csv' });
+        var a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'report-' + isoDate(r.from) + '-to-' + isoDate(r.to) + '.csv';
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(function () { URL.revokeObjectURL(a.href); }, 500);
+        SM.toast('Report exported', 'success'); /* same verb as the button */
+      });
+
+      /* ---------- boot ---------- */
+      (async function init() {
+        var params = new URLSearchParams(window.location.search);
+        function show(el) {
+          [qs('#rep-skeleton'), qs('#rep-loaded'), qs('#rep-error')].forEach(function (x) { x.hidden = x !== el; });
+        }
+        SM.initShell();
+        if (params.get('state') === 'error') { show(qs('#rep-error')); SM.icons(); return; }
+        try {
+          var session = await SM.requireAuth();
+          if (!session) return; /* redirecting to login.html */
+          var ctx = await SM.loadContext();
+          tz = ctx.shop.timezone || 'UTC';
+          var d = await load(rangeFor('30d'));
+          if (!d) return;
+          show(qs('#rep-loaded'));
+          paint(d);
+        } catch (e) {
+          SM.handleError(e);
+          show(qs('#rep-error'));
+          SM.icons();
+        }
+      })();
+    })();
+  </script>
+</body>
+</html>

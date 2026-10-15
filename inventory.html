@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Inventory · Shop Manager</title>
+  <script>
+    (function () {
+      try {
+        var t = localStorage.getItem('sm-theme') ||
+          (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+        document.documentElement.setAttribute('data-theme', t);
+      } catch (e) {}
+    })();
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/lucide@0.294.0"></script>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body data-nav="products">
+
+  <!-- ===== Shared shell ===== -->
+  <div class="sidebar-overlay" id="sidebar-overlay"></div>
+  <aside class="sidebar" id="sidebar" aria-label="Main navigation">
+    <div class="sidebar-header">
+      <a class="brand" href="dashboard.html"><span class="brand-mark"><i data-lucide="store"></i></span>Shop Manager</a>
+    </div>
+    <nav class="sidebar-nav">
+      <a class="nav-link" data-nav="dashboard" href="dashboard.html"><i data-lucide="layout-dashboard"></i>Dashboard</a>
+      <a class="nav-link" data-nav="products" href="products.html"><i data-lucide="package"></i>Products</a>
+      <a class="nav-link" data-nav="orders" href="orders.html"><i data-lucide="shopping-cart"></i>Orders</a>
+      <a class="nav-link" data-nav="customers" href="customers.html"><i data-lucide="users"></i>Customers</a>
+      <a class="nav-link" data-nav="suppliers" href="suppliers.html"><i data-lucide="truck"></i>Suppliers</a>
+      <a class="nav-link" data-nav="purchases" href="purchases.html"><i data-lucide="clipboard-list"></i>Purchases</a>
+      <a class="nav-link" data-nav="expenses" href="expenses.html"><i data-lucide="wallet"></i>Expenses</a>
+      <a class="nav-link" data-nav="reports" href="reports.html"><i data-lucide="bar-chart-3"></i>Reports</a>
+      <a class="nav-link" data-nav="settings" href="settings.html"><i data-lucide="settings"></i>Settings</a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-row">
+        <span class="avatar">MC</span>
+        <span class="user-meta"><span class="user-name">Maya Chen</span><span class="user-role">Manager</span></span>
+      </div>
+      <div class="sidebar-footer-row">
+        <span class="text-3" style="font-size:12px;">Northwind Supply Co.</span>
+        <button type="button" class="btn btn-ghost btn-icon btn-sm" data-theme-toggle aria-label="Toggle theme">
+          <i data-lucide="sun" class="i-sun is-hidden"></i><i data-lucide="moon" class="i-moon"></i>
+        </button>
+      </div>
+    </div>
+  </aside>
+  <header class="topbar">
+    <button type="button" class="btn btn-ghost btn-icon" id="nav-toggle" aria-label="Open menu" aria-expanded="false" aria-controls="sidebar">
+      <i data-lucide="menu"></i>
+    </button>
+    <a class="brand" href="dashboard.html"><span class="brand-mark"><i data-lucide="store"></i></span><span class="topbar-title">Shop Manager</span></a>
+    <span class="spacer"></span>
+    <button type="button" class="btn btn-ghost btn-icon" data-theme-toggle aria-label="Toggle theme">
+      <i data-lucide="sun" class="i-sun is-hidden"></i><i data-lucide="moon" class="i-moon"></i>
+    </button>
+  </header>
+  <!-- ===== End shared shell ===== -->
+
+  <main class="main">
+    <!-- skeleton -->
+    <div id="inv-skeleton" aria-hidden="true">
+      <div class="page-header"><div class="skeleton sk-line" style="width:130px;height:20px"></div><div class="skeleton sk-line" style="width:240px;height:44px"></div></div>
+      <div class="stat-grid mb-16">
+        <div class="card sk-card"><div class="skeleton sk-line" style="width:50%"></div><div class="skeleton sk-value"></div></div>
+        <div class="card sk-card"><div class="skeleton sk-line" style="width:40%"></div><div class="skeleton sk-value"></div></div>
+        <div class="card sk-card"><div class="skeleton sk-line" style="width:45%"></div><div class="skeleton sk-value"></div></div>
+        <div class="card sk-card"><div class="skeleton sk-line" style="width:55%"></div><div class="skeleton sk-value"></div></div>
+      </div>
+      <div class="card"><div class="card-body"><div class="skeleton sk-block" style="height:240px"></div></div></div>
+    </div>
+
+    <!-- error (inventory.html?state=error) -->
+    <div class="card" id="inv-error" hidden>
+      <div class="error-state">
+        <div class="empty-icon"><i data-lucide="cloud-off"></i></div>
+        <h1 class="empty-title">Couldn't load inventory</h1>
+        <p class="empty-desc">We couldn't reach the server. Check your connection and try again.</p>
+        <button type="button" class="btn btn-primary" onclick="window.location.reload()">Try again</button>
+      </div>
+    </div>
+
+    <!-- empty (inventory.html?state=empty) -->
+    <div class="card" id="inv-empty" hidden>
+      <div class="empty-state">
+        <div class="empty-icon"><i data-lucide="boxes"></i></div>
+        <h1 class="empty-title">No products to track</h1>
+        <p class="empty-desc">Inventory tracks whatever you add in Products. Add your first product to get started.</p>
+        <a href="products.html" class="btn btn-primary"><i data-lucide="plus"></i>Add your first product</a>
+      </div>
+    </div>
+
+    <!-- loaded -->
+    <div id="inv-loaded" hidden>
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">Inventory</h1>
+          <p class="page-sub">Stock levels and every movement in and out.</p>
+        </div>
+        <div class="page-actions">
+          <a class="btn btn-ghost" href="products.html"><i data-lucide="package"></i>Products</a>
+          <a class="btn btn-primary" href="purchases.html?new=1"><i data-lucide="plus"></i>New purchase</a>
+        </div>
+      </div>
+
+      <div class="stat-grid mb-16" id="inv-cards"></div>
+
+      <div class="tabs" id="tabs" role="group" aria-label="Inventory views"></div>
+
+      <div class="table-toolbar">
+        <div class="search-box">
+          <i data-lucide="search"></i>
+          <input class="input" type="search" id="search" placeholder="Search product or SKU" aria-label="Search inventory">
+        </div>
+        <div class="select-wrap">
+          <select class="select" id="filter-category" aria-label="Filter by category"></select>
+          <i data-lucide="chevron-down" class="select-caret"></i>
+        </div>
+        <div class="select-wrap" id="date-wrap" hidden>
+          <select class="select" id="filter-date" aria-label="Filter by date">
+            <option value="all">All time</option>
+            <option value="today">Today</option>
+            <option value="7d">Last 7 days</option>
+            <option value="30d">Last 30 days</option>
+          </select>
+          <i data-lucide="chevron-down" class="select-caret"></i>
+        </div>
+      </div>
+
+      <!-- tab 1: stock levels -->
+      <div class="table-wrap" id="levels-card">
+        <table class="table table-responsive">
+          <thead>
+            <tr>
+              <th><button type="button" class="th-sort" data-sort="name">Product<i data-lucide="chevrons-up-down"></i></button></th>
+              <th class="num"><button type="button" class="th-sort" data-sort="stock">Stock<i data-lucide="chevrons-up-down"></i></button></th>
+              <th class="num"><button type="button" class="th-sort" data-sort="reorder_level">Reorder at<i data-lucide="chevrons-up-down"></i></button></th>
+              <th>Status</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="levels-body"></tbody>
+        </table>
+      </div>
+      <div class="card" id="levels-noresults" hidden>
+        <div class="empty-state">
+          <div class="empty-icon"><i data-lucide="search-x"></i></div>
+          <h2 class="empty-title">No products match</h2>
+          <p class="empty-desc">Try a different search term or category.</p>
+          <button type="button" class="btn btn-secondary" id="clear-filters-levels">Clear filters</button>
+        </div>
+      </div>
+
+      <!-- tab 2: movements -->
+      <div class="table-wrap" id="movements-card" hidden>
+        <table class="table table-responsive">
+          <thead>
+            <tr>
+              <th><button type="button" class="th-sort" data-sort="created_at">Date<i data-lucide="chevrons-up-down"></i></button></th>
+              <th><button type="button" class="th-sort" data-sort="product">Product<i data-lucide="chevrons-up-down"></i></button></th>
+              <th class="num">Change</th>
+              <th>Reason</th>
+              <th>User</th>
+            </tr>
+          </thead>
+          <tbody id="movements-body"></tbody>
+        </table>
+      </div>
+      <div class="card" id="mov-noresults" hidden>
+        <div class="empty-state">
+          <div class="empty-icon"><i data-lucide="history"></i></div>
+          <h2 class="empty-title">No movements match</h2>
+          <p class="empty-desc">Try a wider date range or a different filter.</p>
+          <button type="button" class="btn btn-secondary" id="clear-filters-mov">Clear filters</button>
+        </div>
+      </div>
+
+      <div class="pagination" id="pager">
+        <span id="page-info"></span>
+        <span class="pages">
+          <button type="button" class="page-btn" id="page-prev" aria-label="Previous page"><i data-lucide="chevron-left"></i></button>
+          <span id="page-btns" style="display:inline-flex;gap:4px;"></span>
+          <button type="button" class="page-btn" id="page-next" aria-label="Next page"><i data-lucide="chevron-right"></i></button>
+        </span>
+      </div>
+    </div>
+  </main>
+
+  <!-- ===== Adjust stock dialog ===== -->
+  <div class="overlay" id="adjust-overlay" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="adjust-title">
+      <div class="sheet-handle" aria-hidden="true"></div>
+      <div class="modal-header">
+        <h2 class="modal-title" id="adjust-title">Adjust stock</h2>
+        <button type="button" class="btn btn-ghost btn-icon btn-sm" data-layer-close aria-label="Close"><i data-lucide="x"></i></button>
+      </div>
+      <div class="modal-body">
+        <p class="adj-product"><strong id="adj-name"></strong><span class="cell-muted tnum" id="adj-sku"></span></p>
+        <p class="muted mb-16">Current stock: <strong class="tnum" id="adj-current"></strong> units</p>
+
+        <div class="field">
+          <span class="label" id="adj-amount-label">Change</span>
+          <div class="adj-row">
+            <span class="seg-mini" role="group" aria-label="Adjustment direction">
+              <button type="button" data-dir="down" aria-pressed="false" aria-label="Remove stock">−</button>
+              <button type="button" data-dir="up" class="is-selected" aria-pressed="true" aria-label="Add stock">+</button>
+            </span>
+            <input class="input" type="number" id="adj-amount" data-field="adjust_qty" min="1" step="1" value="1"
+                   inputmode="numeric" data-autofocus aria-labelledby="adj-amount-label" aria-describedby="adj-amount-error">
+            <span class="text-3">units</span>
+          </div>
+          <p class="field-error" id="adj-amount-error" hidden></p>
+        </div>
+
+        <div class="field">
+          <label class="label" for="adj-reason">Reason</label>
+          <input class="input" id="adj-reason" data-field="reason" list="reason-list"
+                 placeholder="Pick a suggestion or type your own" aria-describedby="adj-reason-error">
+          <datalist id="reason-list">
+            <option value="Stock count correction"></option>
+            <option value="Damaged goods"></option>
+            <option value="Return to supplier"></option>
+            <option value="Customer return"></option>
+            <option value="Expired stock"></option>
+          </datalist>
+          <p class="field-error" id="adj-reason-error" hidden></p>
+        </div>
+
+        <p class="adj-preview" id="adj-preview" aria-live="polite"></p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-layer-close>Cancel</button>
+        <button type="button" class="btn btn-primary" id="adj-apply">Apply adjustment</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.105.3/dist/umd/supabase.min.js"></script>
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+  <script>
+    (function () {
+      var qs = SM.qs, qsa = SM.qsa, fmt = SM.formatMoney, esc = SM.escapeHtml;
+
+      var params = new URLSearchParams(window.location.search);
+      var LEVELS_PAGE = 10, MOV_PAGE = 8;
+
+      var state = {
+        tab: params.get('tab') === 'movements' ? 'movements' : 'levels',
+        search: '', category: 'all', date: 'all', page: 1,
+        sortLevels: { key: 'stock', dir: 1 },   /* lowest stock first: triage default */
+        sortMov: { key: 'created_at', dir: -1 }
+      };
+
+      /* data held on the page (always filled from the database) */
+      var S = { count: 0, active: 0, inactive: 0, value: 0, units: 0, low: 0, out: 0, cats: [] };
+      var movAll = 0;                                   /* total movements, ignoring filters */
+      var LIST = { rows: [], total: 0 };                /* current page of products */
+      var MOV = { rows: [], total: 0 };                 /* current page of movements */
+      var seq = 0;                                      /* guards against out-of-order responses */
+      var canAdjust = false;                            /* UX only — RLS + RPC enforce manager+ */
+
+      function bySku(sku) { return LIST.rows.filter(function (p) { return p.sku === sku; })[0] || null; }
+      function one(x) { return Array.isArray(x) ? (x[0] || null) : (x || null); }
+      function cleanTerm(s) { return String(s || '').replace(/[%,()"\\*]/g, ' ').replace(/\s+/g, ' ').trim(); }
+      function fmtDateTime(iso) {
+        var d = new Date(iso);
+        return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) +
+          ' <span class="cell-muted">· ' + d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) + '</span>';
+      }
+      function deltaText(delta) { return delta >= 0 ? '+' + delta : '−' + Math.abs(delta); }
+      function sinceIso() {
+        if (state.date === 'all') return null;
+        var d = new Date(); d.setHours(0, 0, 0, 0);
+        if (state.date === '7d') d.setDate(d.getDate() - 6);
+        else if (state.date === '30d') d.setDate(d.getDate() - 29);
+        return d.toISOString();
+      }
+
+      /* ---------- data layer ---------- */
+      /* Narrow columns for ALL products: feeds the 4 cards + category filter. */
+      async function fetchSummary() {
+        var rows = [], from = 0, step = 1000;
+        for (;;) {
+          var r = await SM.db.from('products')
+            .select('category,stock,cost,reorder_level,active')
+            .order('id').range(from, from + step - 1);
+          if (r.error) throw r.error;
+          rows = rows.concat(r.data || []);
+          if (!r.data || r.data.length < step) break;
+          from += step;
+        }
+        var cents = 0, units = 0, active = 0, low = 0, out = 0, cats = {};
+        rows.forEach(function (p) {
+          cents += Math.round(Number(p.cost) * 100) * p.stock;
+          units += p.stock;
+          if (p.category) cats[p.category] = 1;
+          if (p.active) {
+            active++;
+            if (p.stock === 0) out++;
+            else if (p.stock <= p.reorder_level) low++;
+          }
+        });
+        return { count: rows.length, active: active, inactive: rows.length - active,
+                 value: cents / 100, units: units, low: low, out: out, cats: Object.keys(cats).sort() };
+      }
+      async function fetchMovCount() {
+        var r = await SM.db.from('stock_movements').select('id', { count: 'exact', head: true });
+        if (r.error) throw r.error;
+        return r.count || 0;
+      }
+      function levelsQuery(page) {
+        var from = (page - 1) * LEVELS_PAGE;
+        var q = SM.db.from('products')
+          .select('id,sku,name,category,stock,reorder_level,active', { count: 'exact' });
+        if (state.category !== 'all') q = q.eq('category', state.category);
+        var t = cleanTerm(state.search);
+        if (t) q = q.or('name.ilike.%' + t + '%,sku.ilike.%' + t + '%,category.ilike.%' + t + '%');
+        var k = state.sortLevels.key, asc = state.sortLevels.dir === 1;
+        q = q.order(k, { ascending: asc });
+        if (k !== 'name') q = q.order('name', { ascending: true });
+        return q.order('id').range(from, from + LEVELS_PAGE - 1);
+      }
+      function movementsQuery(page) {
+        var from = (page - 1) * MOV_PAGE;
+        var q = SM.db.from('stock_movements')
+          .select('id,delta,reason,created_at,products!inner(name,sku,category),profiles(full_name)', { count: 'exact' });
+        if (state.category !== 'all') q = q.eq('products.category', state.category);
+        var since = sinceIso();
+        if (since) q = q.gte('created_at', since);
+        var t = cleanTerm(state.search);
+        if (t) q = q.or('reason.ilike.%' + t + '%,products.name.ilike.%' + t + '%,profiles.full_name.ilike.%' + t + '%');
+        var asc = state.sortMov.dir === 1;
+        if (state.sortMov.key === 'product') {
+          q = q.order('products(name)', { ascending: asc }).order('created_at', { ascending: false });
+        } else {
+          q = q.order('created_at', { ascending: asc });
+        }
+        return q.order('id').range(from, from + MOV_PAGE - 1);
+      }
+      /* returns { tab, rows, total }; steps back if the page no longer exists */
+      async function fetchPage() {
+        var tab = state.tab, size = tab === 'levels' ? LEVELS_PAGE : MOV_PAGE;
+        var make = tab === 'levels' ? levelsQuery : movementsQuery;
+        var r = await make(state.page);
+        if (r.error) throw r.error;
+        if (!(r.data || []).length && r.count > 0 && state.page > 1) {
+          state.page = Math.ceil(r.count / size);
+          r = await make(state.page);
+          if (r.error) throw r.error;
+        }
+        return { tab: tab, rows: r.data || [], total: r.count || 0 };
+      }
+      function storePage(res) { if (res.tab === 'levels') LIST = res; else MOV = res; }
+
+      /* ---------- cards ---------- */
+      function renderCards() {
+        function card(label, val, icon, hint, href, linkText) {
+          return '<div class="card stat-card">' +
+            '<span class="stat-label">' + label + '</span>' +
+            '<span class="stat-value">' + val + '</span>' +
+            '<span class="stat-hint"><i data-lucide="' + icon + '"></i>' + hint + '</span>' +
+            '<a class="stat-link" href="' + href + '">' + linkText + '<i data-lucide="chevron-right"></i></a>' +
+            '</div>';
+        }
+        qs('#inv-cards').innerHTML =
+          card('Total stock value', fmt(Math.round(S.value * 100) / 100), 'boxes', 'Across ' + S.units + ' units', 'products.html', 'View products') +
+          card('Products', String(S.count), 'package',
+            S.inactive ? S.active + ' active · ' + S.inactive + ' inactive' : 'All active', 'products.html', 'View products') +
+          card('Low stock', String(S.low), 'alert-triangle', 'Needs restocking soon', 'products.html?filter=low', 'Review low stock') +
+          card('Out of stock', String(S.out), 'package-x', 'Unavailable for sale', 'products.html?filter=out', 'Review out of stock');
+      }
+
+      /* ---------- tabs ---------- */
+      function renderTabs() {
+        var defs = [['levels', 'Stock levels', S.count], ['movements', 'Movements', movAll]];
+        qs('#tabs').innerHTML = defs.map(function (d) {
+          return '<button type="button" class="tab' + (state.tab === d[0] ? ' is-active' : '') + '"' +
+            (state.tab === d[0] ? ' aria-current="true"' : '') + ' data-tab="' + d[0] + '">' +
+            d[1] + '<span class="tab-count">' + d[2] + '</span></button>';
+        }).join('');
+      }
+
+      /* ---------- category filter ---------- */
+      function fillCategories() {
+        if (state.category !== 'all' && S.cats.indexOf(state.category) < 0) state.category = 'all';
+        qs('#filter-category').innerHTML = '<option value="all">All categories</option>' +
+          S.cats.map(function (c) { return '<option value="' + esc(c) + '">' + esc(c) + '</option>'; }).join('');
+        qs('#filter-category').value = state.category;
+      }
+
+      /* ---------- pagination ---------- */
+      function renderPager(total, pageSize, pages, start) {
+        qs('#pager').hidden = total === 0;
+        qs('#page-info').textContent = total ? 'Showing ' + (start + 1) + '–' + Math.min(total, start + pageSize) + ' of ' + total : '';
+        qs('#page-prev').disabled = state.page <= 1;
+        qs('#page-next').disabled = state.page >= pages;
+        var btns = '', last = 0, cur = state.page;
+        for (var i = 1; i <= pages; i++) {
+          var show = pages <= 7 || i === 1 || i === pages || Math.abs(i - cur) <= 1 ||
+            (cur <= 3 && i <= 4) || (cur >= pages - 2 && i >= pages - 3);
+          if (!show) continue;
+          if (last && i - last > 1) btns += '<span class="cell-muted" aria-hidden="true">…</span>';
+          btns += '<button type="button" class="page-btn"' + (i === cur ? ' aria-current="page"' : '') + ' data-page="' + i + '">' + i + '</button>';
+          last = i;
+        }
+        qs('#page-btns').innerHTML = btns;
+      }
+
+      /* ---------- stock levels ---------- */
+      function renderLevels() {
+        var total = LIST.total, pageSize = LEVELS_PAGE;
+        var pages = Math.max(1, Math.ceil(total / pageSize));
+        var start = (state.page - 1) * pageSize;
+        var k = state.sortLevels.key, dir = state.sortLevels.dir;
+
+        qs('#levels-card').hidden = total === 0;
+        qs('#levels-noresults').hidden = !(total === 0 && S.count > 0);
+
+        qsa('#levels-card .th-sort').forEach(function (b) {
+          var on = b.dataset.sort === k;
+          b.classList.toggle('is-sorted', on);
+          var icon = on ? (dir === 1 ? 'chevron-up' : 'chevron-down') : 'chevrons-up-down';
+          b.innerHTML = b.childNodes[0].textContent + '<i data-lucide="' + icon + '"></i>';
+        });
+
+        function stockBadge(p) {
+          if (!p.active) return '<span class="badge badge-neutral"><span class="dot"></span>Inactive</span>';
+          if (p.stock === 0) return '<span class="badge badge-danger"><span class="dot"></span>Out of stock</span>';
+          if (p.stock <= p.reorder_level) return '<span class="badge badge-warning"><span class="dot"></span>Low stock</span>';
+          return '<span class="badge badge-success"><span class="dot"></span>In stock</span>';
+        }
+        qs('#levels-body').innerHTML = LIST.rows.map(function (p) {
+          return '<tr>' +
+            '<td data-label="Product" data-field="name"><span class="cell-stack"><span class="cell-main">' + esc(p.name) + '</span>' +
+              '<span class="cell-sub tnum">' + esc(p.sku) + ' · ' + esc(p.category || 'No category') + '</span></span></td>' +
+            '<td data-label="Stock" class="num cell-strong" data-field="stock">' + esc(p.stock) + '</td>' +
+            '<td data-label="Reorder at" class="num" data-field="reorder_level">' + esc(p.reorder_level) + '</td>' +
+            '<td data-label="Status">' + stockBadge(p) + '</td>' +
+            '<td data-label="" class="cell-actions">' + (canAdjust
+              ? '<button type="button" class="btn btn-secondary btn-sm" data-adjust="' + esc(p.sku) + '">' +
+                '<i data-lucide="sliders-horizontal"></i>Adjust</button>'
+              : '') + '</td>' +
+            '</tr>';
+        }).join('');
+        renderPager(total, pageSize, pages, start);
+      }
+
+      /* ---------- movements ---------- */
+      function renderMovements() {
+        var total = MOV.total, pageSize = MOV_PAGE;
+        var pages = Math.max(1, Math.ceil(total / pageSize));
+        var start = (state.page - 1) * pageSize;
+        var k = state.sortMov.key, dir = state.sortMov.dir;
+
+        qs('#movements-card').hidden = total === 0;
+        qs('#mov-noresults').hidden = !(total === 0 && movAll > 0);
+
+        qsa('#movements-card .th-sort').forEach(function (b) {
+          var on = b.dataset.sort === k;
+          b.classList.toggle('is-sorted', on);
+          var icon = on ? (dir === 1 ? 'chevron-up' : 'chevron-down') : 'chevrons-up-down';
+          b.innerHTML = b.childNodes[0].textContent + '<i data-lucide="' + icon + '"></i>';
+        });
+
+        qs('#movements-body').innerHTML = MOV.rows.map(function (m) {
+          var pr = one(m.products), us = one(m.profiles);
+          return '<tr>' +
+            '<td data-label="Date" data-field="created_at">' + fmtDateTime(m.created_at) + '</td>' +
+            '<td data-label="Product" data-field="product">' + esc(pr ? pr.name : '—') + '</td>' +
+            '<td data-label="Change" class="num" data-field="delta">' +
+              '<span class="' + (m.delta >= 0 ? 'delta-up' : 'delta-down') + '">' + deltaText(m.delta) + '</span></td>' +
+            '<td data-label="Reason" data-field="reason">' + esc(m.reason || '—') + '</td>' +
+            '<td data-label="User" data-field="user">' + esc((us && us.full_name) || '—') + '</td>' + '</tr>';
+        }).join('');
+        renderPager(total, pageSize, pages, start);
+      }
+
+      /* ---------- render ---------- */
+      function renderChrome() {
+        var isLevels = state.tab === 'levels';
+        renderTabs();
+        qs('#date-wrap').hidden = isLevels;
+        qs('#search').placeholder = isLevels ? 'Search product or SKU' : 'Search product, reason or user';
+      }
+      function render() {
+        renderChrome();
+        renderCards();
+        if (state.tab === 'levels') { qs('#movements-card').hidden = true; qs('#mov-noresults').hidden = true; renderLevels(); }
+        else { qs('#levels-card').hidden = true; qs('#levels-noresults').hidden = true; renderMovements(); }
+        SM.icons();
+      }
+      function clearViews() {
+        ['#levels-card', '#levels-noresults', '#movements-card', '#mov-noresults', '#pager'].forEach(function (s) { qs(s).hidden = true; });
+      }
+      function setBusy(on) {
+        ['#levels-card', '#movements-card'].forEach(function (s) {
+          var el = qs(s);
+          el.setAttribute('aria-busy', String(on));
+          el.style.opacity = on ? '.55' : '';
+          el.style.pointerEvents = on ? 'none' : '';
+        });
+      }
+
+      /* reload the current list (search / filter / sort / page / tab change) */
+      async function loadList(quiet) {
+        var my = ++seq;
+        setBusy(true);
+        try {
+          var res = await fetchPage();
+          if (my !== seq) return false;
+          storePage(res);
+          render();
+          return true;
+        } catch (e) {
+          if (my === seq && !quiet) SM.handleError(e);
+          return false;
+        } finally {
+          if (my === seq) setBusy(false);
+        }
+      }
+      /* reload cards + tab counts + category list */
+      async function refreshTop() {
+        var r = await Promise.all([fetchSummary(), fetchMovCount()]);
+        S = r[0]; movAll = r[1];
+        fillCategories();
+        renderTabs();
+        renderCards();
+        SM.icons();
+      }
+      async function refreshAll() {
+        try { await refreshTop(); } catch (e) { SM.handleError(e); }
+        await loadList();
+      }
+
+      /* ---------- adjust dialog ---------- */
+      var adj = { sku: null, dir: 'up' };
+      function adjValidity() {
+        var p = bySku(adj.sku);
+        var raw = qs('#adj-amount').value.trim();
+        var amt = Number(raw);
+        if (!raw || isNaN(amt) || amt !== Math.floor(amt) || amt < 1) {
+          return { ok: false, msg: 'Enter a whole number of 1 or more.' };
+        }
+        if (adj.dir === 'down' && amt > p.stock) {
+          return { ok: false, msg: 'Only ' + p.stock + ' in stock — can\u2019t remove ' + amt + ' units.' };
+        }
+        var delta = adj.dir === 'up' ? amt : -amt;
+        return { ok: true, amt: amt, delta: delta, newStock: p.stock + delta };
+      }
+      function updateAdjPreview() {
+        var p = bySku(adj.sku);
+        if (!p) return;
+        var v = adjValidity();
+        var applyBtn = qs('#adj-apply');
+        if (!v.ok) {
+          SM.setFieldError(qs('#adj-amount'), v.msg);
+          applyBtn.disabled = true;
+          qs('#adj-preview').textContent = '';
+          return;
+        }
+        SM.clearFieldError(qs('#adj-amount'));
+        applyBtn.disabled = false;
+        qs('#adj-preview').innerHTML = 'New stock: <strong class="tnum">' + p.stock + ' → ' + v.newStock + '</strong> units';
+      }
+      function setDir(dir) {
+        adj.dir = dir;
+        qsa('#adjust-overlay [data-dir]').forEach(function (b) {
+          var on = b.dataset.dir === dir;
+          b.classList.toggle('is-selected', on);
+          b.setAttribute('aria-pressed', String(on));
+        });
+        updateAdjPreview();
+      }
+      function openAdjust(sku) {
+        var p = bySku(sku);
+        if (!p || !canAdjust) return;
+        adj.sku = sku;
+        qs('#adj-name').textContent = p.name;
+        qs('#adj-sku').textContent = p.sku + ' · ' + (p.category || 'No category');
+        qs('#adj-current').textContent = p.stock;
+        qs('#adj-amount').value = '1';
+        qs('#adj-reason').value = '';
+        SM.clearFieldError(qs('#adj-reason'));
+        setDir('up');
+        SM.openModal(qs('#adjust-overlay .modal'));
+        var amt = qs('#adj-amount');
+        amt.focus(); amt.select();
+      }
+      qs('#levels-body').addEventListener('click', function (e) {
+        var b = e.target.closest('[data-adjust]');
+        if (b) openAdjust(b.dataset.adjust);
+      });
+      qsa('#adjust-overlay [data-dir]').forEach(function (b) {
+        b.addEventListener('click', function () { setDir(b.dataset.dir); });
+      });
+      qs('#adj-amount').addEventListener('input', updateAdjPreview);
+      qs('#adj-apply').addEventListener('click', async function () {
+        var btn = this;
+        var p = bySku(adj.sku);
+        if (!p) return;
+        var v = adjValidity();
+        if (!v.ok) { SM.setFieldError(qs('#adj-amount'), v.msg); return; }
+        var reason = qs('#adj-reason').value.trim();
+        if (!reason) {
+          SM.setFieldError(qs('#adj-reason'), 'Add a reason for this adjustment.');
+          qs('#adj-reason').focus();
+          return;
+        }
+        SM.clearFieldError(qs('#adj-reason'));
+
+        SM.setLoading(btn, true, 'Applying…');
+        try {
+          var r = await SM.db.rpc('adjust_stock', { p_product_id: p.id, p_delta: v.delta, p_reason: reason });
+          if (r.error) throw r.error;
+          SM.closeModal(qs('#adjust-overlay .modal'));
+          SM.toast('Adjustment applied', 'success'); /* same verb as "Apply adjustment" */
+          SM.setLoading(btn, false);
+          await refreshAll();
+        } catch (e) {
+          SM.setLoading(btn, false);
+          SM.handleError(e);
+          /* stock may have changed under us: refresh the list and the dialog's numbers */
+          if (await loadList(true)) {
+            var np = bySku(adj.sku);
+            if (np) { qs('#adj-current').textContent = np.stock; updateAdjPreview(); }
+          }
+        }
+      });
+
+      /* ---------- toolbar + tabs ---------- */
+      qs('#tabs').addEventListener('click', function (e) {
+        var t = e.target.closest('[data-tab]');
+        if (!t || t.dataset.tab === state.tab) return;
+        state.tab = t.dataset.tab;
+        state.page = 1; state.search = '';
+        qs('#search').value = '';
+        clearViews();
+        renderChrome();
+        SM.icons();
+        loadList();
+      });
+      qs('#search').addEventListener('input', SM.debounce(function () {
+        state.search = qs('#search').value.trim(); state.page = 1; loadList();
+      }, 200));
+      qs('#filter-category').addEventListener('change', function () { state.category = this.value; state.page = 1; loadList(); });
+      qs('#filter-date').addEventListener('change', function () { state.date = this.value; state.page = 1; loadList(); });
+      qs('#clear-filters-levels').addEventListener('click', function () {
+        state.search = ''; state.category = 'all'; state.page = 1;
+        qs('#search').value = ''; qs('#filter-category').value = 'all'; loadList();
+      });
+      qs('#clear-filters-mov').addEventListener('click', function () {
+        state.search = ''; state.category = 'all'; state.date = 'all'; state.page = 1;
+        qs('#search').value = ''; qs('#filter-category').value = 'all'; qs('#filter-date').value = 'all'; loadList();
+      });
+      qs('#levels-card').addEventListener('click', function (e) {
+        var b = e.target.closest('.th-sort');
+        if (!b) return;
+        var key = b.dataset.sort;
+        if (state.sortLevels.key === key) state.sortLevels.dir *= -1;
+        else state.sortLevels = { key: key, dir: 1 };
+        state.page = 1; loadList();
+      });
+      qs('#movements-card').addEventListener('click', function (e) {
+        var b = e.target.closest('.th-sort');
+        if (!b) return;
+        var key = b.dataset.sort;
+        if (state.sortMov.key === key) state.sortMov.dir *= -1;
+        else state.sortMov = { key: key, dir: key === 'created_at' ? -1 : 1 };
+        state.page = 1; loadList();
+      });
+      qs('#page-btns').addEventListener('click', function (e) {
+        var b = e.target.closest('[data-page]');
+        if (b) { state.page = +b.dataset.page; loadList(); }
+      });
+      qs('#page-prev').addEventListener('click', function () { if (state.page > 1) { state.page--; loadList(); } });
+      qs('#page-next').addEventListener('click', function () { state.page++; loadList(); });
+
+      /* ---------- boot ---------- */
+      SM.initShell();
+      (async function init() {
+        function show(el) {
+          [qs('#inv-skeleton'), qs('#inv-loaded'), qs('#inv-empty'), qs('#inv-error')].forEach(function (x) { x.hidden = x !== el; });
+        }
+        var session = await SM.requireAuth();
+        if (!session) return;                       /* redirected to login.html */
+        try {
+          await SM.loadContext();                   /* sidebar, currency, role */
+          canAdjust = SM.isManager();
+          if (!canAdjust) {                         /* staff: no purchasing (UX only) */
+            qsa('a[href^="purchases.html"]', qs('.page-actions')).forEach(function (a) { a.style.display = 'none'; });
+          }
+
+          var demo = params.get('state');
+          if (demo === 'error') { show(qs('#inv-error')); SM.icons(); return; }
+
+          var r = await Promise.all([fetchSummary(), fetchMovCount()]);
+          S = r[0]; movAll = r[1];
+          if (demo === 'empty' || S.count === 0) { show(qs('#inv-empty')); SM.icons(); return; }
+
+          fillCategories();
+          storePage(await fetchPage());
+          show(qs('#inv-loaded'));
+          render();
+        } catch (e) {
+          SM.handleError(e);
+          show(qs('#inv-error'));
+          SM.icons();
+        }
+      })();
+    })();
+  </script>
+</body>
+</html>

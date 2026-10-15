@@ -1,0 +1,787 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Expenses · Shop Manager</title>
+  <script>
+    (function () {
+      try {
+        var t = localStorage.getItem('sm-theme') ||
+          (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+        document.documentElement.setAttribute('data-theme', t);
+      } catch (e) {}
+    })();
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/lucide@0.294.0"></script>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body data-nav="expenses">
+
+  <!-- ===== Shared shell ===== -->
+  <div class="sidebar-overlay" id="sidebar-overlay"></div>
+  <aside class="sidebar" id="sidebar" aria-label="Main navigation">
+    <div class="sidebar-header">
+      <a class="brand" href="dashboard.html"><span class="brand-mark"><i data-lucide="store"></i></span>Shop Manager</a>
+    </div>
+    <nav class="sidebar-nav">
+      <a class="nav-link" data-nav="dashboard" href="dashboard.html"><i data-lucide="layout-dashboard"></i>Dashboard</a>
+      <a class="nav-link" data-nav="products" href="products.html"><i data-lucide="package"></i>Products</a>
+      <a class="nav-link" data-nav="orders" href="orders.html"><i data-lucide="shopping-cart"></i>Orders</a>
+      <a class="nav-link" data-nav="customers" href="customers.html"><i data-lucide="users"></i>Customers</a>
+      <a class="nav-link" data-nav="suppliers" href="suppliers.html"><i data-lucide="truck"></i>Suppliers</a>
+      <a class="nav-link" data-nav="purchases" href="purchases.html"><i data-lucide="clipboard-list"></i>Purchases</a>
+      <a class="nav-link" data-nav="expenses" href="expenses.html"><i data-lucide="wallet"></i>Expenses</a>
+      <a class="nav-link" data-nav="reports" href="reports.html"><i data-lucide="bar-chart-3"></i>Reports</a>
+      <a class="nav-link" data-nav="settings" href="settings.html"><i data-lucide="settings"></i>Settings</a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-row">
+        <span class="avatar">MC</span>
+        <span class="user-meta"><span class="user-name">Maya Chen</span><span class="user-role">Manager</span></span>
+      </div>
+      <div class="sidebar-footer-row">
+        <span class="text-3" style="font-size:12px;">Northwind Supply Co.</span>
+        <button type="button" class="btn btn-ghost btn-icon btn-sm" data-theme-toggle aria-label="Toggle theme">
+          <i data-lucide="sun" class="i-sun is-hidden"></i><i data-lucide="moon" class="i-moon"></i>
+        </button>
+      </div>
+    </div>
+  </aside>
+  <header class="topbar">
+    <button type="button" class="btn btn-ghost btn-icon" id="nav-toggle" aria-label="Open menu" aria-expanded="false" aria-controls="sidebar">
+      <i data-lucide="menu"></i>
+    </button>
+    <a class="brand" href="dashboard.html"><span class="brand-mark"><i data-lucide="store"></i></span><span class="topbar-title">Shop Manager</span></a>
+    <span class="spacer"></span>
+    <button type="button" class="btn btn-ghost btn-icon" data-theme-toggle aria-label="Toggle theme">
+      <i data-lucide="sun" class="i-sun is-hidden"></i><i data-lucide="moon" class="i-moon"></i>
+    </button>
+  </header>
+  <!-- ===== End shared shell ===== -->
+
+  <main class="main">
+    <!-- skeleton -->
+    <div id="exp-skeleton" aria-hidden="true">
+      <div class="page-header"><div class="skeleton sk-line" style="width:130px;height:20px"></div><div class="skeleton sk-line" style="width:160px;height:44px"></div></div>
+      <div class="skeleton sk-line" style="width:240px;height:44px;margin-bottom:16px"></div>
+      <div class="stat-mini-grid mb-16" style="max-width:560px;">
+        <div class="skeleton" style="height:58px;border-radius:8px;"></div>
+        <div class="skeleton" style="height:58px;border-radius:8px;"></div>
+        <div class="skeleton" style="height:58px;border-radius:8px;"></div>
+      </div>
+      <div class="card mb-16"><div class="card-body"><div class="skeleton sk-block" style="height:160px"></div></div></div>
+      <div class="card"><div class="card-body"><div class="skeleton sk-line" style="width:40%"></div><div class="skeleton sk-block" style="height:200px;margin-top:12px"></div></div></div>
+    </div>
+
+    <!-- error (expenses.html?state=error) -->
+    <div class="card" id="exp-error" hidden>
+      <div class="error-state">
+        <div class="empty-icon"><i data-lucide="cloud-off"></i></div>
+        <h1 class="empty-title">Couldn't load expenses</h1>
+        <p class="empty-desc">We couldn't reach the server. Check your connection and try again.</p>
+        <button type="button" class="btn btn-primary" onclick="window.location.reload()">Try again</button>
+      </div>
+    </div>
+
+    <!-- loaded -->
+    <div id="exp-loaded" hidden>
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">Expenses</h1>
+          <p class="page-sub">What the shop spends each month.</p>
+        </div>
+        <div class="page-actions">
+          <button type="button" class="btn btn-primary" id="add-btn"><i data-lucide="plus"></i>Add expense</button>
+        </div>
+      </div>
+
+      <!-- month selector -->
+      <div class="table-toolbar">
+        <div class="month-nav" role="group" aria-label="Month">
+          <button type="button" class="btn btn-ghost btn-icon btn-sm" id="month-prev" aria-label="Previous month"><i data-lucide="chevron-left"></i></button>
+          <span class="month-label" id="month-label" aria-live="polite"></span>
+          <button type="button" class="btn btn-ghost btn-icon btn-sm" id="month-next" aria-label="Next month"><i data-lucide="chevron-right"></i></button>
+        </div>
+        <span class="spacer"></span>
+        <button type="button" class="btn btn-ghost btn-sm" id="today-btn" hidden>Back to current month</button>
+      </div>
+
+      <!-- summary row -->
+      <div class="stat-mini-grid mb-16" id="exp-summary"></div>
+
+      <!-- chart by category -->
+      <section class="card mb-16" id="chart-card" aria-label="Expenses by category" hidden>
+        <div class="card-header"><h2 class="card-title">By category</h2></div>
+        <div class="card-body">
+          <div class="chart-box" id="exp-chart-box">
+            <canvas id="exp-chart" role="img" aria-label="Bar chart of expenses by category"></canvas>
+          </div>
+        </div>
+      </section>
+
+      <!-- spreadsheet -->
+      <div class="card grid-card" id="grid-root">
+        <form class="qa" id="quick-add" novalidate>
+          <input class="input" type="date" id="qa-date" data-field="spent_on" aria-label="Date">
+          <input class="input" id="qa-category" data-field="category" list="exp-cat-list"
+                 placeholder="Category" aria-label="Category" autocomplete="off">
+          <input class="input" type="number" id="qa-amount" data-field="amount" min="0" step="0.01"
+                 placeholder="0.00" aria-label="Amount" inputmode="decimal">
+          <input class="input qa-notes" id="qa-notes" data-field="notes"
+                 placeholder="Notes (optional)" aria-label="Notes" autocomplete="off">
+          <div class="qa-actions">
+            <button type="submit" class="btn btn-primary">Add expense</button>
+          </div>
+          <p class="qa-error" id="qa-error" role="alert" hidden></p>
+        </form>
+
+        <div class="exp-scroll" id="exp-table-card">
+          <table class="table table-responsive">
+            <thead>
+              <tr>
+                <th><button type="button" class="th-sort" data-sort="spent_on">Date<i data-lucide="chevrons-up-down"></i></button></th>
+                <th><button type="button" class="th-sort" data-sort="category">Category<i data-lucide="chevrons-up-down"></i></button></th>
+                <th class="num"><button type="button" class="th-sort" data-sort="amount">Amount<i data-lucide="chevrons-up-down"></i></button></th>
+                <th>Notes</th>
+                <th class="col-actions" aria-label="Actions"></th>
+              </tr>
+            </thead>
+            <tbody id="exp-body"></tbody>
+          </table>
+        </div>
+
+        <!-- empty month lives with the grid so quick-add stays reachable -->
+        <div class="empty-state" id="exp-empty" hidden>
+          <div class="empty-icon"><i data-lucide="receipt"></i></div>
+          <h2 class="empty-title" id="exp-empty-title">No expenses this month</h2>
+          <p class="empty-desc">Log what you spent using the row above — it will appear here instantly.</p>
+        </div>
+
+        <div class="grid-bottombar">
+          <span id="bb-count"></span>
+          <span class="grid-hint">Click a cell to edit · Enter saves · Esc cancels</span>
+          <span class="save-state is-saved" id="save-state" aria-live="polite"></span>
+        </div>
+      </div>
+
+      <div class="pagination" id="pager">
+        <span id="page-info"></span>
+        <span class="pages">
+          <button type="button" class="page-btn" id="page-prev" aria-label="Previous page"><i data-lucide="chevron-left"></i></button>
+          <span id="page-btns" style="display:inline-flex;gap:4px;"></span>
+          <button type="button" class="page-btn" id="page-next" aria-label="Next page"><i data-lucide="chevron-right"></i></button>
+        </span>
+      </div>
+    </div>
+  </main>
+
+  <!-- datalist for categories -->
+  <datalist id="exp-cat-list"></datalist>
+
+  <!-- delete confirm -->
+  <div class="overlay" id="del-overlay" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="del-title">
+      <div class="sheet-handle" aria-hidden="true"></div>
+      <div class="modal-header">
+        <h2 class="modal-title" id="del-title">Delete expense</h2>
+        <button type="button" class="btn btn-ghost btn-icon btn-sm" data-layer-close aria-label="Close"><i data-lucide="x"></i></button>
+      </div>
+      <div class="modal-body">
+        <p class="muted" id="del-desc"></p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-layer-close>Keep expense</button>
+        <button type="button" class="btn btn-danger" id="del-confirm">Delete expense</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+  <script>
+    (function () {
+      var qs = SM.qs, qsa = SM.qsa, fmt = SM.formatMoney, esc = SM.escapeHtml;
+
+      var SEL = 'id,spent_on,category,amount,notes';
+      var DEFAULT_CATS = ['Rent', 'Utilities', 'Shipping', 'Packaging', 'Marketing', 'Repairs', 'Internet', 'Cleaning', 'Insurance', 'Office supplies'];
+
+      var ROWS = [];   /* current page, straight from the database */
+      var AGG = [];    /* id + category + amount for the whole selected month (summary, chart, totals) */
+      var total = 0;   /* entries in the selected month */
+      var reqSeq = 0;  /* ignores out-of-date responses when the user clicks quickly */
+
+      var state = { ym: null, sortKey: 'spent_on', sortDir: -1, page: 1, pageSize: 8 };
+
+      /* ---------- helpers ---------- */
+      function pad2(n) { return ('0' + n).slice(-2); }
+      function todayStr() {
+        var d = new Date();
+        return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
+      }
+      function ymOf(s) { return String(s).slice(0, 7); }
+      function currentYm() { return todayStr().slice(0, 7); }
+      function round2(n) { return Math.round(n * 100) / 100; }
+      function monthLabel(ym) {
+        var p = ym.split('-');
+        return new Date(+p[0], +p[1] - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+      }
+      function monthRange(ym) {
+        var p = ym.split('-'), y = +p[0], m = +p[1];
+        var ny = m === 12 ? y + 1 : y, nm = m === 12 ? 1 : m + 1;
+        return { from: ym + '-01', to: ny + '-' + pad2(nm) + '-01' };
+      }
+      /* spent_on is a plain DATE: anchor at local noon so formatting never shifts a day */
+      function dateLabel(s) { return SM.formatDate(s + 'T12:00:00'); }
+      function norm(r) {
+        return { id: r.id, spent_on: String(r.spent_on).slice(0, 10), category: r.category, amount: Number(r.amount), notes: r.notes || '' };
+      }
+      function rowById(id) { return ROWS.filter(function (x) { return x.id === id; })[0]; }
+
+      /* ---------- categories datalist ---------- */
+      var CATS = {};
+      function paintCats() {
+        qs('#exp-cat-list').innerHTML = Object.keys(CATS).sort().map(function (c) { return '<option value="' + esc(c) + '">'; }).join('');
+      }
+      function addCat(c) { if (c && !CATS[c]) { CATS[c] = 1; paintCats(); } }
+      async function loadCats() {
+        DEFAULT_CATS.forEach(function (c) { CATS[c] = 1; });
+        try {
+          var r = await SM.db.from('expenses').select('category').order('spent_on', { ascending: false }).limit(1000);
+          if (!r.error) r.data.forEach(function (x) { CATS[x.category] = 1; });
+        } catch (_) { /* suggestions only; never block the page */ }
+        paintCats();
+      }
+
+      /* ---------- data loading (server-side month filter, sort, pagination) ---------- */
+      async function fetchAgg(rng) {
+        var out = [], from = 0, step = 1000;
+        for (;;) {
+          var r = await SM.db.from('expenses').select('id,category,amount')
+            .gte('spent_on', rng.from).lt('spent_on', rng.to)
+            .order('id').range(from, from + step - 1);
+          if (r.error) throw r.error;
+          out = out.concat(r.data.map(function (x) { return { id: x.id, category: x.category, amount: Number(x.amount) }; }));
+          if (r.data.length < step) break;
+          from += step;
+        }
+        return out;
+      }
+      async function fetchMonth() {
+        var seq = ++reqSeq;
+        var rng = monthRange(state.ym);
+        var box = qs('#exp-table-card');
+        box.setAttribute('aria-busy', 'true');
+        try {
+          var agg = await fetchAgg(rng);
+          if (seq !== reqSeq) return false;
+          var pages = Math.max(1, Math.ceil(agg.length / state.pageSize));
+          if (state.page > pages) state.page = pages;
+          var rows = [];
+          if (agg.length) {
+            var start = (state.page - 1) * state.pageSize;
+            var q = SM.db.from('expenses').select(SEL)
+              .gte('spent_on', rng.from).lt('spent_on', rng.to)
+              .order(state.sortKey, { ascending: state.sortDir === 1 });
+            if (state.sortKey !== 'spent_on') q = q.order('spent_on', { ascending: false });
+            q = q.order('created_at', { ascending: false }).order('id');
+            var r = await q.range(start, start + state.pageSize - 1);
+            if (r.error) throw r.error;
+            if (seq !== reqSeq) return false;
+            rows = r.data.map(norm);
+          }
+          AGG = agg; ROWS = rows; total = agg.length;
+          return true;
+        } finally {
+          if (seq === reqSeq) box.removeAttribute('aria-busy');
+        }
+      }
+      async function loadMonth() {
+        if (await fetchMonth()) { closeEditor(true); render(); }
+      }
+      /* change month / sort / page, reload from the database, roll back the view if it fails */
+      async function go(change) {
+        var snap = { ym: state.ym, page: state.page, sortKey: state.sortKey, sortDir: state.sortDir };
+        change();
+        try { await loadMonth(); }
+        catch (err) { Object.assign(state, snap); renderMonth(); SM.handleError(err); }
+      }
+
+      /* ---------- month controls ---------- */
+      function renderMonth() {
+        qs('#month-label').textContent = monthLabel(state.ym);
+        qs('#month-next').disabled = state.ym >= currentYm();
+        qs('#today-btn').hidden = state.ym === currentYm();
+        var dv = qs('#qa-date').value;
+        if (!dv || dv.slice(0, 7) !== state.ym) {
+          qs('#qa-date').value = state.ym === currentYm() ? todayStr() : state.ym + '-01';
+        }
+      }
+      function shiftMonth(d) {
+        var p = state.ym.split('-');
+        var dt = new Date(+p[0], +p[1] - 1 + d, 1);
+        var ym = dt.getFullYear() + '-' + pad2(dt.getMonth() + 1);
+        if (ym > currentYm()) return; /* no future months */
+        go(function () { state.ym = ym; state.page = 1; renderMonth(); });
+      }
+      qs('#month-prev').addEventListener('click', function () { shiftMonth(-1); });
+      qs('#month-next').addEventListener('click', function () { shiftMonth(1); });
+      qs('#today-btn').addEventListener('click', function () {
+        go(function () { state.ym = currentYm(); state.page = 1; renderMonth(); });
+      });
+
+      /* ---------- summary row ---------- */
+      function renderSummary(list) {
+        var sum = round2(list.reduce(function (s, e) { return s + e.amount; }, 0));
+        var byCat = {};
+        list.forEach(function (e) { byCat[e.category] = (byCat[e.category] || 0) + e.amount; });
+        var cats = Object.keys(byCat).sort(function (a, b) { return byCat[b] - byCat[a] || a.localeCompare(b); });
+        var top = cats[0] || null;
+        qs('#exp-summary').innerHTML =
+          '<div class="stat-mini"><span class="stat-mini-label">Total spent</span>' +
+            '<span class="stat-mini-value">' + fmt(sum) + '</span></div>' +
+          '<div class="stat-mini"><span class="stat-mini-label">Top category</span>' +
+            '<span class="stat-mini-value" style="font-size:14px;">' +
+              (top ? esc(top) + ' <span class="cell-muted tnum" style="font-size:12px;font-weight:400;">' + fmt(round2(byCat[top])) + '</span>' : '—') +
+            '</span></div>' +
+          '<div class="stat-mini"><span class="stat-mini-label">Entries</span>' +
+            '<span class="stat-mini-value">' + list.length + '</span></div>';
+      }
+
+      /* ---------- chart ---------- */
+      var chart = null;
+      function themeColors() {
+        var cs = getComputedStyle(document.documentElement);
+        function v(n) { return cs.getPropertyValue(n).trim(); }
+        return { bar: v('--primary'), grid: v('--border'), tick: v('--text-3') };
+      }
+      function renderChart(list) {
+        var byCat = {};
+        list.forEach(function (e) { byCat[e.category] = (byCat[e.category] || 0) + e.amount; });
+        var cats = Object.keys(byCat).sort(function (a, b) { return byCat[b] - byCat[a]; });
+        var card = qs('#chart-card'), box = qs('#exp-chart-box');
+        if (!cats.length) {
+          card.hidden = true;
+          if (chart) { chart.destroy(); chart = null; }
+          return;
+        }
+        card.hidden = false;
+        box.style.height = Math.min(240, Math.max(140, cats.length * 40 + 20)) + 'px';
+        var c = themeColors();
+        var data = {
+          labels: cats,
+          datasets: [{
+            data: cats.map(function (k) { return round2(byCat[k]); }),
+            backgroundColor: c.bar, borderRadius: 4, maxBarThickness: 22
+          }]
+        };
+        if (chart) {
+          chart.data = data;
+          chart.options.scales.x.grid.color = c.grid;
+          chart.options.scales.x.ticks.color = c.tick;
+          chart.options.scales.y.ticks.color = c.tick;
+          chart.update('none');
+          return;
+        }
+        if (typeof Chart === 'undefined') {
+          box.innerHTML = '<p class="muted" style="padding:16px 0;">Chart library failed to load. Check your connection and refresh.</p>';
+          return;
+        }
+        chart = new Chart(qs('#exp-chart'), {
+          type: 'bar',
+          data: data,
+          options: {
+            indexAxis: 'y',
+            responsive: true, maintainAspectRatio: false,
+            plugins: {
+              legend: { display: false },
+              tooltip: { callbacks: { label: function (ctx) { return ' ' + fmt(ctx.parsed.x); } } }
+            },
+            scales: {
+              x: { beginAtZero: true, border: { display: false }, grid: { color: c.grid },
+                   ticks: { color: c.tick, maxTicksLimit: 5, font: { size: 11 },
+                            callback: function (v) { return SM.moneyTick(v); } } },
+              y: { border: { display: false }, grid: { display: false },
+                   ticks: { color: c.tick, font: { size: 12 } } }
+            }
+          }
+        });
+      }
+      SM.onTheme(function () {
+        if (!chart) return;
+        var c = themeColors();
+        chart.data.datasets[0].backgroundColor = c.bar;
+        chart.options.scales.x.grid.color = c.grid;
+        chart.options.scales.x.ticks.color = c.tick;
+        chart.options.scales.y.ticks.color = c.tick;
+        chart.update('none');
+      });
+
+      /* ---------- table ---------- */
+      function rowHtml(e) {
+        return '<tr data-id="' + e.id + '">' +
+          '<td data-label="Date" data-field="spent_on" tabindex="0" class="tnum">' + dateLabel(e.spent_on) + '</td>' +
+          '<td data-label="Category" data-field="category" tabindex="0">' + esc(e.category) + '</td>' +
+          '<td data-label="Amount" data-field="amount" class="num cell-strong">' + fmt(e.amount) + '</td>' +
+          '<td data-label="Notes" data-field="notes" tabindex="0">' + (e.notes ? esc(e.notes) : '<span class="cell-muted">—</span>') + '</td>' +
+          '<td data-label="" class="cell-actions"><button type="button" class="btn btn-ghost btn-icon btn-sm" data-del="' + e.id + '" aria-label="Delete expense"><i data-lucide="trash-2"></i></button></td>' +
+          '</tr>';
+      }
+      function renderTable() {
+        var k = state.sortKey, dir = state.sortDir;
+        var pages = Math.max(1, Math.ceil(total / state.pageSize));
+        var start = (state.page - 1) * state.pageSize;
+
+        qs('#exp-table-card').hidden = total === 0;
+        qs('#exp-empty').hidden = total !== 0;
+        qs('#exp-empty-title').textContent = 'No expenses in ' + monthLabel(state.ym);
+
+        qsa('#exp-table-card .th-sort').forEach(function (b) {
+          var on = b.dataset.sort === k;
+          b.classList.toggle('is-sorted', on);
+          var icon = on ? (dir === 1 ? 'chevron-up' : 'chevron-down') : 'chevrons-up-down';
+          b.innerHTML = b.childNodes[0].textContent + '<i data-lucide="' + icon + '"></i>';
+        });
+
+        qs('#exp-body').innerHTML = ROWS.map(rowHtml).join('');
+
+        qs('#pager').hidden = total === 0;
+        qs('#page-info').textContent = total ? 'Showing ' + (start + 1) + '–' + Math.min(total, start + ROWS.length) + ' of ' + total : '';
+        qs('#page-prev').disabled = state.page <= 1;
+        qs('#page-next').disabled = state.page >= pages;
+        var btns = '';
+        for (var i = 1; i <= pages; i++) {
+          btns += '<button type="button" class="page-btn"' + (i === state.page ? ' aria-current="page"' : '') + ' data-page="' + i + '">' + i + '</button>';
+        }
+        qs('#page-btns').innerHTML = btns;
+        SM.icons();
+      }
+
+      function renderBottom(list) {
+        var sum = round2(list.reduce(function (s, e) { return s + e.amount; }, 0));
+        qs('#bb-count').innerHTML = '<strong>' + list.length + '</strong> ' + (list.length === 1 ? 'expense' : 'expenses') +
+          ' · Total <strong>' + fmt(sum) + '</strong>';
+      }
+
+      /* ---------- save state (same indicator as Products) ---------- */
+      function setSave(s) {
+        var el = qs('#save-state');
+        el.className = 'save-state is-' + s;
+        el.innerHTML = s === 'saved' ? '<i data-lucide="check"></i>All changes saved'
+          : s === 'saving' ? '<span class="spinner" aria-hidden="true"></span>Saving…'
+          : '<i data-lucide="pencil"></i>Unsaved changes';
+        SM.icons();
+      }
+
+      /* ---------- debounced inline saves ---------- */
+      var pending = {};      /* id -> merged patch waiting for the debounce */
+      var flushTimer = null;
+      var inflight = 0;
+      function queuePatch(id, field, value) {
+        pending[id] = pending[id] || {};
+        pending[id][field] = value;
+        setSave('dirty');
+        clearTimeout(flushTimer);
+        flushTimer = setTimeout(flush, 500);
+      }
+      function updateAgg(id, patch) {
+        var a = AGG.filter(function (x) { return x.id === id; })[0];
+        if (!a) return;
+        if (patch.category !== undefined) a.category = patch.category;
+        if (patch.amount !== undefined) a.amount = patch.amount;
+      }
+      function applyRow(n) {
+        var i = ROWS.map(function (x) { return x.id; }).indexOf(n.id);
+        if (i > -1) ROWS[i] = n;
+        updateAgg(n.id, n);
+        var tr = qs('#exp-body tr[data-id="' + n.id + '"]');
+        if (tr && !tr.querySelector('input')) { tr.outerHTML = rowHtml(n); SM.icons(); }
+        refreshAgg();
+      }
+      async function flush() {
+        var ids = Object.keys(pending);
+        if (!ids.length) return;
+        var batch = pending; pending = {};
+        setSave('saving'); inflight++;
+        var failed = false, moved = null;
+        await Promise.all(ids.map(async function (id) {
+          try {
+            var r = await SM.db.from('expenses').update(batch[id]).eq('id', id).select(SEL).maybeSingle();
+            if (r.error) throw r.error;
+            if (!r.data) {
+              var nf = new Error('No row updated');
+              nf.userMessage = 'That expense no longer exists, or you do not have access to change it.';
+              throw nf;
+            }
+            var n = norm(r.data);
+            if (ymOf(n.spent_on) !== state.ym) moved = ymOf(n.spent_on);
+            else applyRow(n);
+          } catch (err) { failed = true; SM.handleError(err); }
+        }));
+        inflight--;
+        var reloadFailed = false;
+        if (failed || moved) {
+          try { await loadMonth(); } catch (err) { reloadFailed = true; SM.handleError(err); }
+        }
+        if (moved) SM.toast('Expense moved to ' + monthLabel(moved), 'info');
+        if (Object.keys(pending).length || reloadFailed) setSave('dirty');
+        else if (!inflight) setSave('saved');
+      }
+      window.addEventListener('beforeunload', function (e) {
+        if (Object.keys(pending).length || inflight) { e.preventDefault(); e.returnValue = ''; }
+      });
+
+      /* ---------- inline cell editing ---------- */
+      var editor = null;
+      function cellText(e, field) {
+        if (field === 'spent_on') return dateLabel(e.spent_on);
+        if (field === 'amount') return fmt(e.amount);
+        if (field === 'category') return esc(e.category);
+        return e.notes ? esc(e.notes) : '<span class="cell-muted">—</span>';
+      }
+      function closeEditor(commit) {
+        if (!editor) return;
+        var ed = editor; editor = null;
+        if (commit) ed.commit(); else ed.cancel();
+      }
+      function startEdit(td) {
+        var tr = td.closest('tr');
+        var e = rowById(tr.dataset.id);
+        if (!e || (editor && editor.td === td)) return;
+        if (editor) closeEditor(true);
+        var field = td.dataset.field, old = e[field];
+        var input = document.createElement('input');
+        input.className = 'cell-input';
+        if (field === 'spent_on') { input.type = 'date'; input.value = old.slice(0, 10); }
+        else if (field === 'amount') { input.type = 'number'; input.min = '0'; input.step = '0.01'; input.inputMode = 'decimal'; input.value = old.toFixed(2); }
+        else {
+          input.type = 'text'; input.value = old == null ? '' : old;
+          if (field === 'category') { input.setAttribute('list', 'exp-cat-list'); input.placeholder = 'Category'; }
+        }
+        td.textContent = '';
+        td.appendChild(input);
+        input.focus();
+        if (field !== 'spent_on') input.select();
+
+        var done = false;
+        function repaint(withAgg) {
+          td.innerHTML = cellText(e, field);
+          SM.icons();
+          if (withAgg && field !== 'notes') refreshAgg();
+        }
+        function commit() {
+          if (done) return; done = true; editor = null;
+          var v, changed;
+          if (field === 'spent_on') {
+            v = /^\d{4}-\d{2}-\d{2}$/.test(input.value) ? input.value : null;
+            changed = v && v !== old.slice(0, 10);
+          } else if (field === 'amount') {
+            var n = parseFloat(input.value);
+            if (isNaN(n)) v = null;
+            else if (n <= 0) { v = null; SM.toast('Enter an amount greater than zero.', 'error'); }
+            else v = round2(n);
+            changed = v !== null && v !== old;
+          } else {
+            v = input.value.trim();
+            if (field === 'category' && v === '') { repaint(true); return; } /* category can't be empty */
+            changed = v !== old;
+          }
+          if (!changed || v === null) { repaint(false); return; }
+          e[field] = v;
+          var patch = {}; patch[field] = v; updateAgg(e.id, patch);
+          if (field === 'category') addCat(v);
+          repaint(true);
+          queuePatch(e.id, field, v); /* saved to the database after the debounce; the row is refreshed from the result */
+        }
+        function cancel() {
+          if (done) return; done = true; editor = null;
+          repaint(false);
+        }
+        input.addEventListener('keydown', function (ev) {
+          if (ev.key === 'Enter') { ev.preventDefault(); commit(); }
+          else if (ev.key === 'Escape') { ev.preventDefault(); cancel(); }
+        });
+        input.addEventListener('blur', function () { commit(); });
+        editor = { td: td, commit: commit, cancel: cancel };
+      }
+      qs('#exp-body').addEventListener('click', function (e) {
+        var del = e.target.closest('[data-del]');
+        if (del) { askDelete(del.dataset.del); return; }
+        var td = e.target.closest('td[data-field]');
+        if (td) startEdit(td);
+      });
+      qs('#exp-body').addEventListener('keydown', function (e) {
+        if (e.key !== 'Enter' || e.target instanceof HTMLInputElement) return;
+        var td = e.target.closest('td[data-field]');
+        if (td) { e.preventDefault(); startEdit(td); }
+      });
+
+      /* ---------- delete ---------- */
+      var delTarget = null;
+      function askDelete(id) {
+        closeEditor(true);
+        delTarget = rowById(id);
+        if (!delTarget) return;
+        qs('#del-desc').innerHTML = 'Delete <strong>' + esc(delTarget.category) + '</strong> · ' + fmt(delTarget.amount) +
+          (delTarget.notes ? ' — “' + esc(delTarget.notes) + '”' : '') + '? This can\u2019t be undone.';
+        SM.openModal(qs('#del-overlay .modal'));
+      }
+      qs('#del-confirm').addEventListener('click', async function () {
+        if (!delTarget) return;
+        var btn = this, id = delTarget.id;
+        SM.setLoading(btn, true, 'Deleting…');
+        setSave('saving');
+        var deleted = false;
+        try {
+          var r = await SM.db.from('expenses').delete().eq('id', id).select('id');
+          if (r.error) throw r.error;
+          if (!r.data || !r.data.length) {
+            var nf = new Error('No row deleted');
+            nf.userMessage = 'That expense no longer exists, or you do not have access to delete it.';
+            throw nf;
+          }
+          deleted = true;
+          delete pending[id];
+          SM.closeModal(qs('#del-overlay .modal'));
+          SM.toast('Expense deleted', 'success'); /* same verb as the button */
+        } catch (err) {
+          SM.handleError(err);
+        } finally {
+          SM.setLoading(btn, false);
+        }
+        if (deleted) {
+          try { await loadMonth(); } catch (err) { SM.handleError(err); }
+        }
+        setSave(Object.keys(pending).length ? 'dirty' : 'saved');
+      });
+
+      /* ---------- quick add ---------- */
+      var adding = false;
+      qs('#quick-add').addEventListener('submit', async function (e) {
+        e.preventDefault();
+        if (adding) return;
+        var dateIn = qs('#qa-date'), catIn = qs('#qa-category'), amtIn = qs('#qa-amount');
+        var cat = catIn.value.trim();
+        var amt = parseFloat(amtIn.value);
+        var dv = dateIn.value;
+        var err = null, bad = null;
+        [dateIn, catIn, amtIn].forEach(function (i) { i.removeAttribute('aria-invalid'); });
+        if (!dv) { err = 'Pick a date.'; bad = dateIn; }
+        else if (!cat) { err = 'Category is required.'; bad = catIn; }
+        else if (isNaN(amt) || amt <= 0) { err = 'Enter an amount greater than zero.'; bad = amtIn; }
+        var errEl = qs('#qa-error');
+        if (err) {
+          errEl.textContent = err; errEl.hidden = false;
+          bad.setAttribute('aria-invalid', 'true'); bad.focus();
+          return;
+        }
+        errEl.hidden = true;
+
+        var btn = qs('#quick-add button[type="submit"]');
+        adding = true;
+        SM.setLoading(btn, true, 'Adding…');
+        setSave('saving');
+        var added = false;
+        try {
+          var r = await SM.db.from('expenses').insert({
+            shop_id: SM.ctx.shop.id,
+            spent_on: dv,
+            category: cat,
+            amount: round2(amt),
+            notes: qs('#qa-notes').value.trim()
+          }).select(SEL).single();
+          if (r.error) throw r.error;
+          added = true;
+          addCat(cat);
+          /* keep category and date for fast repeat entry; clear the rest */
+          amtIn.value = ''; qs('#qa-notes').value = '';
+          state.page = 1;
+          if (ymOf(dv) !== state.ym) state.ym = ymOf(dv);
+          SM.toast('Expense added', 'success'); /* same verb as the button */
+        } catch (ex) {
+          SM.handleError(ex);
+        } finally {
+          adding = false;
+          SM.setLoading(btn, false);
+        }
+        if (added) {
+          try { await loadMonth(); } catch (ex) { SM.handleError(ex); }
+        }
+        setSave(Object.keys(pending).length ? 'dirty' : 'saved');
+      });
+      [qs('#qa-date'), qs('#qa-category'), qs('#qa-amount')].forEach(function (i) {
+        i.addEventListener('input', function () {
+          i.removeAttribute('aria-invalid');
+          qs('#qa-error').hidden = true;
+        });
+      });
+
+      /* header button: pulse + focus the quick-add row (one place to add, everywhere) */
+      qs('#add-btn').addEventListener('click', function () {
+        var qa = qs('#quick-add');
+        qa.classList.remove('is-pulse'); void qa.offsetWidth; qa.classList.add('is-pulse');
+        qs('#qa-date').scrollIntoView({ block: 'center' });
+        qs('#qa-date').focus({ preventScroll: true });
+      });
+
+      /* ---------- toolbar, sort, pager ---------- */
+      qs('#exp-table-card').addEventListener('click', function (e) {
+        var b = e.target.closest('.th-sort');
+        if (!b) return;
+        var key = b.dataset.sort;
+        go(function () {
+          if (state.sortKey === key) state.sortDir *= -1;
+          else { state.sortKey = key; state.sortDir = key === 'category' ? 1 : -1; }
+          state.page = 1;
+        });
+      });
+      qs('#page-btns').addEventListener('click', function (e) {
+        var b = e.target.closest('[data-page]');
+        if (b) go(function () { state.page = +b.dataset.page; });
+      });
+      qs('#page-prev').addEventListener('click', function () { if (state.page > 1) go(function () { state.page--; }); });
+      qs('#page-next').addEventListener('click', function () { go(function () { state.page++; }); });
+
+      /* ---------- aggregates + render ---------- */
+      function refreshAgg() {
+        renderSummary(AGG);
+        renderChart(AGG);
+        renderBottom(AGG);
+      }
+      function render() {
+        renderMonth();
+        refreshAgg();
+        renderTable();
+      }
+
+      /* ---------- boot ---------- */
+      (async function init() {
+        SM.initShell();
+        function show(el) {
+          [qs('#exp-skeleton'), qs('#exp-loaded'), qs('#exp-error')].forEach(function (x) { x.hidden = x !== el; });
+        }
+        try {
+          var session = await SM.requireAuth();
+          if (!session) return; /* redirected to login */
+          await SM.loadContext();
+          if (!SM.isManager()) { window.location.replace('dashboard.html'); return; } /* staff cannot use Expenses */
+          state.ym = currentYm();
+          await Promise.all([loadCats(), fetchMonth()]);
+          show(qs('#exp-loaded'));
+          setSave('saved');
+          render();
+        } catch (err) {
+          show(qs('#exp-error'));
+          SM.icons();
+          SM.handleError(err);
+        }
+      })();
+    })();
+  </script>
+</body>
+</html>

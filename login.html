@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Log in · Shop Manager</title>
+  <script>
+    /* theme pre-paint: stored choice, else system preference */
+    (function () {
+      try {
+        var t = localStorage.getItem('sm-theme') ||
+          (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+        document.documentElement.setAttribute('data-theme', t);
+      } catch (e) {}
+    })();
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/lucide@0.294.0"></script>
+  <link rel="stylesheet" href="styles.css">
+</head>
+
+<body class="auth-page">
+
+  <button type="button" class="btn btn-ghost btn-icon theme-fab" data-theme-toggle>
+    <i data-lucide="sun" class="i-sun is-hidden"></i>
+    <i data-lucide="moon" class="i-moon"></i>
+  </button>
+
+  <main class="auth-shell">
+    <section class="auth-card" aria-labelledby="auth-title">
+      <div class="auth-logo">
+        <span class="brand-mark brand-mark--lg"><i data-lucide="store"></i></span>
+      </div>
+      <h1 class="auth-title" id="auth-title">Log in</h1>
+      <p class="auth-subtitle">Welcome back. Enter your details to continue.</p>
+
+      <div class="alert alert-error" id="login-error" role="alert" hidden>
+        <i data-lucide="alert-circle"></i>
+        <div><strong>Wrong email or password.</strong><br>Try again, or use “Forgot password?” below.</div>
+      </div>
+
+      <form id="login-form" novalidate>
+        <div class="field">
+          <label class="label" for="email">Email</label>
+          <input class="input" type="email" id="email" name="email" data-field="email" autocomplete="email"
+            placeholder="you@company.com" aria-describedby="email-error" required>
+          <p class="field-error" id="email-error" hidden></p>
+        </div>
+
+        <div class="field">
+          <label class="label" for="password">Password</label>
+          <div class="input-group">
+            <input class="input" type="password" id="password" name="password" data-field="password"
+              autocomplete="current-password" placeholder="Your password" aria-describedby="password-error" required>
+            <button type="button" class="input-trailing" id="toggle-password" aria-label="Show password"
+              aria-pressed="false">
+              <i data-lucide="eye" class="i-eye"></i>
+              <i data-lucide="eye-off" class="i-eye-off is-hidden"></i>
+            </button>
+          </div>
+          <p class="field-error" id="password-error" hidden></p>
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-lg btn-block" id="login-btn">Log in</button>
+      </form>
+
+      <div class="auth-row">
+        <a href="forgot-password.html">Forgot password?</a>
+      </div>
+    </section>
+
+    <div class="demo-hint">
+      <span>Demo account: <strong class="tnum">demo@shop.io / demo1234</strong></span>
+      <button type="button" class="btn btn-secondary btn-sm" id="fill-demo">Fill</button>
+    </div>
+
+    <p class="auth-alt">New to Shop Manager? <a href="signup.html">Create a shop</a></p>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+  <script>
+    var qs = SM.qs;
+    (function () {
+      var form = qs('#login-form'),
+          email = qs('#email'),
+          password = qs('#password'),
+          btn = qs('#login-btn'),
+          banner = qs('#login-error'),
+          card = qs('.auth-card'),
+          DEMO = { email: 'demo@shop.io', password: 'demo1234' },
+          attempted = false;
+
+      function validEmail(v) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v); }
+      function checkEmail(show) {
+        var v = email.value.trim();
+        if (!v) { if (show) SM.setFieldError(email, 'Email is required.'); return false; }
+        if (!validEmail(v)) { if (show) SM.setFieldError(email, 'Enter a valid email address.'); return false; }
+        SM.clearFieldError(email); return true;
+      }
+      function checkPassword(show) {
+        if (!password.value) { if (show) SM.setFieldError(password, 'Password is required.'); return false; }
+        SM.clearFieldError(password); return true;
+      }
+      email.addEventListener('blur', function () { if (attempted || email.value) checkEmail(true); });
+      password.addEventListener('blur', function () { if (attempted || password.value) checkPassword(true); });
+      email.addEventListener('input', function () { if (email.getAttribute('aria-invalid')) checkEmail(true); });
+      password.addEventListener('input', function () { if (password.getAttribute('aria-invalid')) checkPassword(true); });
+
+      /* show / hide password */
+      var toggle = qs('#toggle-password');
+      toggle.addEventListener('click', function () {
+        var show = password.type === 'password';
+        password.type = show ? 'text' : 'password';
+        qs('.i-eye', toggle).classList.toggle('is-hidden', show);
+        qs('.i-eye-off', toggle).classList.toggle('is-hidden', !show);
+        toggle.setAttribute('aria-pressed', String(show));
+        toggle.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+      });
+
+      form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        attempted = true;
+        banner.hidden = true;
+        var ok = [checkEmail(true), checkPassword(true)].every(Boolean);
+        if (!ok) {
+          (email.getAttribute('aria-invalid') ? email : password).focus();
+          return;
+        }
+        SM.setLoading(btn, true, 'Logging in…');
+        doLogin(email.value.trim().toLowerCase(), password.value);
+      });
+
+      async function doLogin(emailValue, passwordValue) {
+        var redirecting = false;
+        try {
+          if (!SM.db) throw new Error('Failed to fetch');
+          var res = await SM.db.auth.signInWithPassword({ email: emailValue, password: passwordValue });
+          if (res.error) throw res.error;
+          if (!res.data || !res.data.session) throw new Error('No session');
+          redirecting = true; // keep the button in its loading state until we leave the page
+          SM.toast('Logged in', 'success'); // same verb as the button
+          setTimeout(function () { window.location.assign('dashboard.html'); }, 700);
+        } catch (err) {
+          var msg = (err && err.message) || '';
+          var code = err && err.code ? String(err.code) : '';
+          if (code === 'invalid_credentials' || /invalid login credentials/i.test(msg)) {
+            banner.hidden = false;
+            card.classList.remove('is-shake'); void card.offsetWidth; card.classList.add('is-shake');
+            password.focus(); password.select();
+          } else if (code === 'email_not_confirmed' || /email not confirmed/i.test(msg)) {
+            err.userMessage = 'Please confirm your email first. Check your inbox for the link.';
+            SM.handleError(err);
+          } else {
+            SM.handleError(err);
+          }
+        } finally {
+          if (!redirecting) SM.setLoading(btn, false);
+        }
+      }
+
+      /* already logged in → go straight to the app */
+      if (SM.db) {
+        SM.db.auth.getSession().then(function (r) {
+          if (r.data && r.data.session) window.location.replace('dashboard.html');
+        });
+      }
+
+      qs('#fill-demo').addEventListener('click', function () {
+        email.value = DEMO.email;
+        password.value = DEMO.password;
+        SM.clearFieldError(email); SM.clearFieldError(password);
+        btn.focus();
+      });
+    })();
+  </script>
+</body>
+
+</html>

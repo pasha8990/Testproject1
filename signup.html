@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sign up · Shop Manager</title>
+  <script>
+    (function () {
+      try {
+        var t = localStorage.getItem('sm-theme') ||
+          (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+        document.documentElement.setAttribute('data-theme', t);
+      } catch (e) {}
+    })();
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/lucide@0.294.0"></script>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="auth-page">
+
+  <button type="button" class="btn btn-ghost btn-icon theme-fab" data-theme-toggle>
+    <i data-lucide="sun" class="i-sun is-hidden"></i>
+    <i data-lucide="moon" class="i-moon"></i>
+  </button>
+
+  <main class="auth-shell">
+    <section class="auth-card" aria-labelledby="auth-title">
+      <div class="auth-logo">
+        <span class="brand-mark brand-mark--lg"><i data-lucide="store"></i></span>
+      </div>
+      <h1 class="auth-title" id="auth-title">Create your account</h1>
+      <p class="auth-subtitle" id="auth-subtitle">Set up your shop and start selling in minutes.</p>
+
+      <!-- invite: checking -->
+      <div class="invite-banner" id="invite-loading" hidden>
+        <span class="spinner" aria-hidden="true"></span>
+        <div><strong>Checking invite link…</strong></div>
+      </div>
+
+      <!-- invite: valid -->
+      <div class="invite-banner" id="invite-banner" hidden>
+        <span class="invite-icon"><i data-lucide="mail"></i></span>
+        <div>
+          <strong>You were invited to join <span id="invite-org"></span></strong>
+          <p>Accept the invitation to finish setting up your account.</p>
+          <span class="badge badge-neutral" id="invite-role" hidden></span>
+        </div>
+      </div>
+
+      <form id="signup-form" novalidate>
+        <div class="field">
+          <label class="label" for="full-name">Full name</label>
+          <input class="input" type="text" id="full-name" name="name" data-field="full_name"
+                 autocomplete="name" placeholder="e.g. Maya Chen"
+                 aria-describedby="name-error" required>
+          <p class="field-error" id="name-error" hidden></p>
+        </div>
+
+        <div class="field" id="field-shop">
+          <label class="label" for="shop-name">Shop name</label>
+          <input class="input" type="text" id="shop-name" name="shop" data-field="shop_name"
+                 autocomplete="organization" placeholder="e.g. Northwind Supply Co."
+                 aria-describedby="shop-error" required>
+          <p class="field-error" id="shop-error" hidden></p>
+        </div>
+
+        <div class="field">
+          <label class="label" for="email">Email</label>
+          <input class="input" type="email" id="email" name="email" data-field="email"
+                 autocomplete="email" placeholder="you@company.com"
+                 aria-describedby="email-error" required>
+          <p class="field-error" id="email-error" hidden></p>
+        </div>
+
+        <div class="field">
+          <label class="label" for="password">Password</label>
+          <div class="input-group">
+            <input class="input" type="password" id="password" name="password" data-field="password"
+                   autocomplete="new-password" placeholder="Create a password"
+                   aria-describedby="password-error" required>
+            <button type="button" class="input-trailing" id="toggle-password"
+                    aria-label="Show password" aria-pressed="false">
+              <i data-lucide="eye" class="i-eye"></i>
+              <i data-lucide="eye-off" class="i-eye-off is-hidden"></i>
+            </button>
+          </div>
+          <div class="strength" id="pw-strength" hidden>
+            <div class="strength-bars" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
+            <span class="strength-label" aria-live="polite"></span>
+          </div>
+          <ul class="pw-rules" id="pw-rules"></ul>
+          <p class="field-error" id="password-error" hidden></p>
+        </div>
+
+        <div class="field">
+          <label class="label" for="confirm">Confirm password</label>
+          <div class="input-group">
+            <input class="input" type="password" id="confirm" name="confirm" data-field="password_confirm"
+                   autocomplete="new-password" placeholder="Re-enter your password"
+                   aria-describedby="confirm-error" required>
+            <button type="button" class="input-trailing" id="toggle-confirm"
+                    aria-label="Show password" aria-pressed="false">
+              <i data-lucide="eye" class="i-eye"></i>
+              <i data-lucide="eye-off" class="i-eye-off is-hidden"></i>
+            </button>
+          </div>
+          <p class="field-error" id="confirm-error" hidden></p>
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-lg btn-block" id="signup-btn">Create account</button>
+      </form>
+
+      <div class="auth-row" id="alt-row">
+        <span class="auth-alt">Already have an account? <a href="login.html">Log in</a></span>
+      </div>
+    </section>
+
+    <!-- invite: invalid / expired -->
+    <section class="empty-state" id="invite-invalid" hidden>
+      <div class="empty-icon"><i data-lucide="mail-x"></i></div>
+      <h1 class="empty-title">Invite not valid</h1>
+      <p class="empty-desc">This invite link is invalid or has expired. Ask the shop owner to send a new invitation.</p>
+      <a href="login.html" class="btn btn-secondary">Back to log in</a>
+    </section>
+
+    <div class="demo-hint" id="mode-hint" hidden>
+      <span>Testing? Try the <a href="signup.html?invite=8f3a2c">invite flow</a> or an <a href="signup.html?invite=expired">invalid invite</a></span>
+    </div>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.58.0/dist/umd/supabase.js"></script>
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+  <script>
+    (function () {
+      var qs = SM.qs;
+
+      var params = new URLSearchParams(window.location.search);
+      var token = params.get('invite');
+      var isInvite = params.has('invite');
+
+      var banner = qs('#invite-banner'), bannerOrg = qs('#invite-org'), bannerRole = qs('#invite-role'),
+          loading = qs('#invite-loading'), invalid = qs('#invite-invalid'),
+          card = qs('.auth-card'), subtitle = qs('#auth-subtitle'),
+          form = qs('#signup-form'), btn = qs('#signup-btn'),
+          nameInput = qs('#full-name'), shopField = qs('#field-shop'), shopInput = qs('#shop-name'),
+          emailInput = qs('#email'), password = qs('#password'), confirmInput = qs('#confirm'),
+          altRow = qs('#alt-row'), hint = qs('#mode-hint');
+
+      /* ---------- mode setup ---------- */
+      function enterShopMode() {
+        form.hidden = false;
+      }
+      function roleLabel(r) { return r ? r.charAt(0).toUpperCase() + r.slice(1) : ''; }
+      function enterInviteMode(inv) {
+        banner.hidden = false;
+        bannerOrg.textContent = inv.org_name;
+        if (inv.invitee_role) { bannerRole.textContent = roleLabel(inv.invitee_role); bannerRole.hidden = false; }
+        subtitle.textContent = 'Finish setting up your account to join the team.';
+        shopField.hidden = true;
+        emailInput.value = inv.invitee_email || '';
+        if (!nameInput.value && inv.invitee_name) nameInput.value = inv.invitee_name;
+        emailInput.readOnly = true;
+        emailInput.closest('.field').classList.add('is-locked');
+        btn.textContent = 'Complete sign up';
+        altRow.hidden = true;
+        hint.hidden = true;
+        form.hidden = false;
+        nameInput.focus();
+      }
+      function showInvalidInvite() {
+        card.hidden = true;
+        hint.hidden = true;
+        invalid.hidden = false;
+      }
+
+      if (isInvite) {
+        loading.hidden = false;
+        form.hidden = true;
+        (async function () {
+          var inv = null;
+          try {
+            if (token) {
+              var res = await SM.db.rpc('get_invitation', { p_token: token });
+              if (res.error) throw res.error;
+              inv = (res.data && res.data[0]) || null;
+            }
+          } catch (err) {
+            loading.hidden = true;
+            SM.handleError(err);
+            showInvalidInvite();
+            return;
+          }
+          loading.hidden = true;
+          if (inv) enterInviteMode(inv); else showInvalidInvite();
+        })();
+      } else {
+        enterShopMode();
+      }
+
+      /* ---------- validation ---------- */
+      var attempted = false;
+      function validEmail(v) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v); }
+
+      function checkName(show) {
+        if (nameInput.value.trim()) { SM.clearFieldError(nameInput); return true; }
+        if (show) SM.setFieldError(nameInput, 'Full name is required.');
+        return false;
+      }
+      function checkShop(show) {
+        if (shopField.hidden) return true;
+        if (shopInput.value.trim()) { SM.clearFieldError(shopInput); return true; }
+        if (show) SM.setFieldError(shopInput, 'Shop name is required.');
+        return false;
+      }
+      function checkEmail(show) {
+        if (isInvite) { SM.clearFieldError(emailInput); return true; }
+        var v = emailInput.value.trim();
+        if (!v) { if (show) SM.setFieldError(emailInput, 'Email is required.'); return false; }
+        if (!validEmail(v)) { if (show) SM.setFieldError(emailInput, 'Enter a valid email address.'); return false; }
+        SM.clearFieldError(emailInput); return true;
+      }
+      function checkPassword(show) {
+        var v = password.value;
+        if (!v) { if (show) SM.setFieldError(password, 'Password is required.'); return false; }
+        var failed = strength.rules.filter(function (r) { return !r.test(v); });
+        if (failed.length) {
+          if (show) SM.setFieldError(password, 'Password needs ' +
+            failed.map(function (r) { return r.label.toLowerCase(); }).join(', ') + '.');
+          return false;
+        }
+        SM.clearFieldError(password); return true;
+      }
+      function checkConfirm(show) {
+        if (!confirmInput.value) { if (show) SM.setFieldError(confirmInput, 'Please confirm your password.'); return false; }
+        if (confirmInput.value !== password.value) { if (show) SM.setFieldError(confirmInput, "Passwords don't match."); return false; }
+        SM.clearFieldError(confirmInput); return true;
+      }
+
+      var strength = SM.bindPasswordStrength(password, qs('#pw-strength'), qs('#pw-rules'), function () {
+        if (confirmInput.value || confirmInput.getAttribute('aria-invalid')) checkConfirm(true);
+      });
+
+      nameInput.addEventListener('blur', function () { if (attempted || nameInput.value) checkName(true); });
+      shopInput.addEventListener('blur', function () { if (attempted || shopInput.value) checkShop(true); });
+      emailInput.addEventListener('blur', function () { if (attempted || emailInput.value) checkEmail(true); });
+      password.addEventListener('blur', function () { if (attempted || password.value) checkPassword(true); });
+      confirmInput.addEventListener('blur', function () { if (attempted || confirmInput.value) checkConfirm(true); });
+      nameInput.addEventListener('input', function () { if (nameInput.getAttribute('aria-invalid')) checkName(true); });
+      shopInput.addEventListener('input', function () { if (shopInput.getAttribute('aria-invalid')) checkShop(true); });
+      emailInput.addEventListener('input', function () { if (emailInput.getAttribute('aria-invalid')) checkEmail(true); });
+      password.addEventListener('input', function () { if (password.getAttribute('aria-invalid')) checkPassword(true); });
+      confirmInput.addEventListener('input', function () { if (confirmInput.getAttribute('aria-invalid')) checkConfirm(true); });
+
+      SM.bindPasswordToggle(qs('#toggle-password'), password);
+      SM.bindPasswordToggle(qs('#toggle-confirm'), confirmInput);
+
+      /* ---------- submit ---------- */
+      form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        attempted = true;
+        var ok = [checkName(true), checkShop(true), checkEmail(true), checkPassword(true), checkConfirm(true)].every(Boolean);
+        if (!ok) {
+          var firstInvalid = form.querySelector('[aria-invalid="true"]');
+          if (firstInvalid) firstInvalid.focus();
+          return;
+        }
+        SM.setLoading(btn, true, isInvite ? 'Completing sign up…' : 'Creating account…');
+        (async function () {
+          try {
+            var meta = { full_name: nameInput.value.trim() };
+            if (isInvite) meta.invite_token = token;
+            else meta.shop_name = shopInput.value.trim();
+
+            var res = await SM.db.auth.signUp({
+              email: emailInput.value.trim(),
+              password: password.value,
+              options: { data: meta }
+            });
+            if (res.error) throw res.error;
+
+            /* email already registered: Supabase returns a user with no identities */
+            if (res.data.user && res.data.user.identities && res.data.user.identities.length === 0) {
+              SM.setFieldError(emailInput, 'An account with this email already exists.');
+              emailInput.focus();
+              SM.setLoading(btn, false);
+              return;
+            }
+
+            if (!res.data.session) {
+              /* email confirmation is enabled: no session until the link is clicked */
+              SM.toast('Check your email to confirm your account, then log in.', 'success');
+              setTimeout(function () { window.location.assign('login.html'); }, 2500);
+              return;
+            }
+
+            SM.toast(isInvite ? 'Sign up completed' : 'Account created', 'success');
+            setTimeout(function () { window.location.assign('dashboard.html'); }, 700);
+          } catch (err) {
+            SM.setLoading(btn, false);
+            if (isInvite && /database error saving new user/i.test(err && err.message || '')) {
+              /* handle_new_user() rejected the invite (expired, used, or email mismatch) */
+              SM.toast('This invite is no longer valid. Ask the shop owner for a new one.', 'error');
+              showInvalidInvite();
+              return;
+            }
+            SM.handleError(err);
+          }
+        })();
+      });
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Customers · Shop Manager</title>
+  <script>
+    (function () {
+      try {
+        var t = localStorage.getItem('sm-theme') ||
+          (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+        document.documentElement.setAttribute('data-theme', t);
+      } catch (e) {}
+    })();
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/lucide@0.294.0"></script>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body data-nav="customers">
+
+  <!-- ===== Shared shell ===== -->
+  <div class="sidebar-overlay" id="sidebar-overlay"></div>
+  <aside class="sidebar" id="sidebar" aria-label="Main navigation">
+    <div class="sidebar-header">
+      <a class="brand" href="dashboard.html"><span class="brand-mark"><i data-lucide="store"></i></span>Shop Manager</a>
+    </div>
+    <nav class="sidebar-nav">
+      <a class="nav-link" data-nav="dashboard" href="dashboard.html"><i data-lucide="layout-dashboard"></i>Dashboard</a>
+      <a class="nav-link" data-nav="products" href="products.html"><i data-lucide="package"></i>Products</a>
+      <a class="nav-link" data-nav="orders" href="orders.html"><i data-lucide="shopping-cart"></i>Orders</a>
+      <a class="nav-link" data-nav="customers" href="customers.html"><i data-lucide="users"></i>Customers</a>
+      <a class="nav-link" data-nav="suppliers" href="suppliers.html"><i data-lucide="truck"></i>Suppliers</a>
+      <a class="nav-link" data-nav="purchases" href="purchases.html"><i data-lucide="clipboard-list"></i>Purchases</a>
+      <a class="nav-link" data-nav="expenses" href="expenses.html"><i data-lucide="wallet"></i>Expenses</a>
+      <a class="nav-link" data-nav="reports" href="reports.html"><i data-lucide="bar-chart-3"></i>Reports</a>
+      <a class="nav-link" data-nav="settings" href="settings.html"><i data-lucide="settings"></i>Settings</a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-row">
+        <span class="avatar">MC</span>
+        <span class="user-meta"><span class="user-name">Maya Chen</span><span class="user-role">Manager</span></span>
+      </div>
+      <div class="sidebar-footer-row">
+        <span class="text-3" style="font-size:12px;">Northwind Supply Co.</span>
+        <button type="button" class="btn btn-ghost btn-icon btn-sm" data-theme-toggle aria-label="Toggle theme">
+          <i data-lucide="sun" class="i-sun is-hidden"></i><i data-lucide="moon" class="i-moon"></i>
+        </button>
+      </div>
+    </div>
+  </aside>
+  <header class="topbar">
+    <button type="button" class="btn btn-ghost btn-icon" id="nav-toggle" aria-label="Open menu" aria-expanded="false" aria-controls="sidebar">
+      <i data-lucide="menu"></i>
+    </button>
+    <a class="brand" href="dashboard.html"><span class="brand-mark"><i data-lucide="store"></i></span><span class="topbar-title">Shop Manager</span></a>
+    <span class="spacer"></span>
+    <button type="button" class="btn btn-ghost btn-icon" data-theme-toggle aria-label="Toggle theme">
+      <i data-lucide="sun" class="i-sun is-hidden"></i><i data-lucide="moon" class="i-moon"></i>
+    </button>
+  </header>
+  <!-- ===== End shared shell ===== -->
+
+  <main class="main">
+    <!-- skeleton -->
+    <div id="cust-skeleton" aria-hidden="true">
+      <div class="page-header"><div class="skeleton sk-line" style="width:150px;height:20px"></div><div class="skeleton sk-line" style="width:170px;height:44px"></div></div>
+      <div class="skeleton sk-line" style="width:280px;height:44px;margin-bottom:16px"></div>
+      <div class="card"><div class="card-body"><div class="skeleton sk-line" style="width:35%"></div><div class="skeleton sk-block" style="height:260px;margin-top:12px"></div></div></div>
+    </div>
+
+    <!-- error (customers.html?state=error) -->
+    <div class="card" id="cust-error" hidden>
+      <div class="error-state">
+        <div class="empty-icon"><i data-lucide="cloud-off"></i></div>
+        <h1 class="empty-title">Couldn't load customers</h1>
+        <p class="empty-desc">We couldn't reach the server. Check your connection and try again.</p>
+        <button type="button" class="btn btn-primary" onclick="window.location.reload()">Try again</button>
+      </div>
+    </div>
+
+    <!-- empty (customers.html?state=empty) -->
+    <div class="card" id="cust-empty" hidden>
+      <div class="empty-state">
+        <div class="empty-icon"><i data-lucide="users"></i></div>
+        <h1 class="empty-title">No customers yet</h1>
+        <p class="empty-desc">Save the people and businesses you sell to, and their order history will build up here.</p>
+        <button type="button" class="btn btn-primary" id="empty-add-btn"><i data-lucide="plus"></i>Add customer</button>
+      </div>
+    </div>
+
+    <!-- loaded -->
+    <div id="cust-loaded" hidden>
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">Customers</h1>
+          <p class="page-sub">Everyone you sell to, with their order history.</p>
+        </div>
+        <div class="page-actions">
+          <button type="button" class="btn btn-primary" id="add-btn"><i data-lucide="plus"></i>Add customer</button>
+        </div>
+      </div>
+
+      <div class="table-toolbar">
+        <div class="search-box">
+          <i data-lucide="search"></i>
+          <input class="input" type="search" id="search" placeholder="Search name, email or phone" aria-label="Search customers">
+        </div>
+        <div class="select-wrap">
+          <select class="select" id="sort-select" aria-label="Sort customers">
+            <option value="name-asc">Sort: Name A–Z</option>
+            <option value="name-desc">Sort: Name Z–A</option>
+            <option value="spent-desc">Sort: Highest total spent</option>
+            <option value="orders-desc">Sort: Most orders</option>
+            <option value="last-desc">Sort: Most recent order</option>
+          </select>
+          <i data-lucide="chevron-down" class="select-caret"></i>
+        </div>
+      </div>
+
+      <div class="table-wrap" id="cust-table-card">
+        <table class="table table-responsive">
+          <thead>
+            <tr>
+              <th><button type="button" class="th-sort" data-sort="name">Name<i data-lucide="chevrons-up-down"></i></button></th>
+              <th>Phone</th>
+              <th>Email</th>
+              <th class="num"><button type="button" class="th-sort" data-sort="orders">Orders<i data-lucide="chevrons-up-down"></i></button></th>
+              <th class="num"><button type="button" class="th-sort" data-sort="spent">Total spent<i data-lucide="chevrons-up-down"></i></button></th>
+              <th><button type="button" class="th-sort" data-sort="last">Last order<i data-lucide="chevrons-up-down"></i></button></th>
+            </tr>
+          </thead>
+          <tbody id="cust-body"></tbody>
+        </table>
+      </div>
+
+      <div class="card" id="cust-noresults" hidden>
+        <div class="empty-state">
+          <div class="empty-icon"><i data-lucide="search-x"></i></div>
+          <h2 class="empty-title">No customers match</h2>
+          <p class="empty-desc">Try a different name, email or phone number.</p>
+          <button type="button" class="btn btn-secondary" id="clear-search">Clear search</button>
+        </div>
+      </div>
+
+      <div class="pagination" id="pager">
+        <span id="page-info"></span>
+        <span class="pages">
+          <button type="button" class="page-btn" id="page-prev" aria-label="Previous page"><i data-lucide="chevron-left"></i></button>
+          <span id="page-btns" style="display:inline-flex;gap:4px;"></span>
+          <button type="button" class="page-btn" id="page-next" aria-label="Next page"><i data-lucide="chevron-right"></i></button>
+        </span>
+      </div>
+    </div>
+  </main>
+
+  <!-- ===== Customer drawer ===== -->
+  <div class="overlay overlay--right" id="drawer-overlay" hidden>
+    <aside class="drawer" role="dialog" aria-modal="true" aria-labelledby="drawer-title">
+      <div class="drawer-header">
+        <h2 class="drawer-title" id="drawer-title">Customer</h2>
+        <button type="button" class="btn btn-ghost btn-icon btn-sm" data-layer-close aria-label="Close"><i data-lucide="x"></i></button>
+      </div>
+      <div class="drawer-body" id="drawer-body"></div>
+      <div class="drawer-footer">
+        <button type="button" class="btn btn-secondary" id="edit-cust-btn"><i data-lucide="pencil"></i>Edit customer</button>
+        <span class="spacer"></span>
+        <a class="btn btn-primary" id="new-order-link" href="order-new.html"><i data-lucide="plus"></i>New order</a>
+      </div>
+    </aside>
+  </div>
+
+  <!-- ===== Add / edit customer modal ===== -->
+  <div class="overlay" id="cust-overlay" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="cust-modal-title">
+      <div class="sheet-handle" aria-hidden="true"></div>
+      <div class="modal-header">
+        <h2 class="modal-title" id="cust-modal-title">Add customer</h2>
+        <button type="button" class="btn btn-ghost btn-icon btn-sm" data-layer-close aria-label="Close"><i data-lucide="x"></i></button>
+      </div>
+      <form id="cust-form" novalidate>
+        <div class="modal-body">
+          <div class="field">
+            <label class="label" for="cf-name">Name</label>
+            <input class="input" id="cf-name" data-field="name" data-autofocus placeholder="e.g. Café Aurora" aria-describedby="cf-name-error" required>
+            <p class="field-error" id="cf-name-error" hidden></p>
+          </div>
+          <div class="field">
+            <label class="label" for="cf-email">Email</label>
+            <input class="input" type="email" id="cf-email" data-field="email" placeholder="optional" aria-describedby="cf-email-error">
+            <p class="field-error" id="cf-email-error" hidden></p>
+          </div>
+          <div class="field">
+            <label class="label" for="cf-phone">Phone</label>
+            <input class="input" id="cf-phone" data-field="phone" placeholder="optional">
+          </div>
+          <div class="field">
+            <label class="label" for="cf-address">Address</label>
+            <input class="input" id="cf-address" data-field="address" placeholder="optional">
+          </div>
+          <div class="field">
+            <label class="label" for="cf-notes">Notes</label>
+            <textarea class="textarea" id="cf-notes" data-field="notes" rows="3" placeholder="Delivery preferences, payment terms…"></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-layer-close>Cancel</button>
+          <button type="submit" class="btn btn-primary" id="cust-save-btn">Add customer</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+  <script>
+    (function () {
+      var qs = SM.qs, qsa = SM.qsa, fmt = SM.formatMoney, esc = SM.escapeHtml;
+
+      var CUST_COLS = 'id,name,email,phone,address,notes';
+      var SUM_COLS = 'customer_id,orders_count,lifetime_spend,outstanding,last_order_at';
+      var SEARCH_CAP = 200; /* max matches fetched when searching + sorting by a computed column */
+
+      var state = { search: '', sort: 'name-asc', page: 1, pageSize: 8 };
+      var ctx = null;
+      var rows = [], total = 0;          /* current page of customers (with stats) + total matches */
+      var current = null, editId = null; /* drawer customer, id being edited (null = adding) */
+      var drawerOrders = null;           /* null = loading, array = loaded, false = failed */
+      var notesSaving = false;
+      var reqId = 0, view = 'skeleton';
+
+      /* ---------- small helpers ---------- */
+      function searchTerm() {
+        /* strip characters that would break the PostgREST or() filter */
+        return state.search.replace(/[%*,()"\\]/g, ' ').replace(/\s+/g, ' ').trim();
+      }
+      function show(sel) {
+        view = sel === '#cust-loaded' ? 'loaded' : sel === '#cust-empty' ? 'empty' : sel === '#cust-error' ? 'error' : 'skeleton';
+        ['#cust-skeleton', '#cust-loaded', '#cust-empty', '#cust-error'].forEach(function (s) {
+          qs(s).hidden = s !== sel;
+        });
+      }
+      function noAccess() {
+        var e = new Error('No row returned');
+        e.userMessage = 'Customer not found, or you do not have access to change it.';
+        return e;
+      }
+      function withStats(c, s) {
+        s = s || {};
+        c.orders_count = Number(s.orders_count) || 0;
+        c.lifetime_spend = Number(s.lifetime_spend) || 0;
+        c.outstanding = Number(s.outstanding) || 0;
+        c.last_order_at = s.last_order_at || null;
+        return c;
+      }
+      function applySearch(q, term) {
+        if (!term) return q;
+        return q.or('name.ilike.%' + term + '%,email.ilike.%' + term + '%,phone.ilike.%' + term + '%');
+      }
+      async function fetchSummaries(ids) {
+        var r = await SM.db.from('customer_summary').select(SUM_COLS).in('customer_id', ids);
+        if (r.error) throw r.error;
+        var map = {};
+        (r.data || []).forEach(function (s) { map[s.customer_id] = s; });
+        return map;
+      }
+
+      /* ---------- data: one page of customers (server-side search / sort / pagination) ---------- */
+      async function fetchPage() {
+        var asc = state.sort.slice(-3) === 'asc';
+        var field = state.sort.split('-')[0];
+        var term = searchTerm();
+        var from = (state.page - 1) * state.pageSize, to = from + state.pageSize - 1;
+        var db = SM.db, r, ids, custs, sums;
+
+        /* A) sort by name: page the customers table directly */
+        if (field === 'name') {
+          r = await applySearch(db.from('customers').select(CUST_COLS, { count: 'exact' }), term)
+            .order('name', { ascending: asc }).order('id', { ascending: true }).range(from, to);
+          if (r.error) throw r.error;
+          custs = r.data || [];
+          ids = custs.map(function (c) { return c.id; });
+          sums = ids.length ? await fetchSummaries(ids) : {};
+          return { total: r.count || 0, rows: custs.map(function (c) { return withStats(c, sums[c.id]); }) };
+        }
+
+        /* B) sort by spent / orders / last order, no search: page the summary view, then load those customers */
+        if (!term) {
+          var col = { spent: 'lifetime_spend', orders: 'orders_count', last: 'last_order_at' }[field];
+          var rs = await db.from('customer_summary').select(SUM_COLS, { count: 'exact' })
+            .order(col, { ascending: asc, nullsFirst: asc }).order('customer_id', { ascending: true }).range(from, to);
+          if (rs.error) throw rs.error;
+          var srows = rs.data || [];
+          ids = srows.map(function (s) { return s.customer_id; });
+          var byId = {};
+          if (ids.length) {
+            var rc = await db.from('customers').select(CUST_COLS).in('id', ids);
+            if (rc.error) throw rc.error;
+            (rc.data || []).forEach(function (c) { byId[c.id] = c; });
+          }
+          var out = [];
+          srows.forEach(function (s) { if (byId[s.customer_id]) out.push(withStats(byId[s.customer_id], s)); });
+          return { total: rs.count || 0, rows: out };
+        }
+
+        /* C) search + computed sort: take the matches (capped), attach stats, sort and slice here */
+        r = await applySearch(db.from('customers').select(CUST_COLS, { count: 'exact' }), term)
+          .order('name', { ascending: true }).limit(SEARCH_CAP);
+        if (r.error) throw r.error;
+        custs = r.data || [];
+        ids = custs.map(function (c) { return c.id; });
+        sums = ids.length ? await fetchSummaries(ids) : {};
+        var list = custs.map(function (c) { return withStats(c, sums[c.id]); });
+        var dir = asc ? 1 : -1;
+        list.sort(function (a, b) {
+          var d;
+          if (field === 'spent') d = a.lifetime_spend - b.lifetime_spend;
+          else if (field === 'orders') d = a.orders_count - b.orders_count;
+          else d = (a.last_order_at ? new Date(a.last_order_at) : 0) - (b.last_order_at ? new Date(b.last_order_at) : 0);
+          return d * dir || a.name.localeCompare(b.name);
+        });
+        return { total: list.length, rows: list.slice(from, to + 1) };
+      }
+
+      async function load(initial) {
+        var my = ++reqId;
+        var body = qs('#cust-body');
+        if (!initial) { body.style.opacity = '.55'; body.setAttribute('aria-busy', 'true'); }
+        try {
+          var out = await fetchPage();
+          if (my !== reqId) return;
+          if (!out.rows.length && out.total > 0 && state.page > 1) { /* page no longer exists */
+            state.page = Math.max(1, Math.ceil(out.total / state.pageSize));
+            return load(initial);
+          }
+          rows = out.rows; total = out.total;
+          if (total === 0 && !searchTerm()) { show('#cust-empty'); SM.icons(); }
+          else { show('#cust-loaded'); render(); }
+        } catch (e) {
+          if (my !== reqId) return;
+          if (initial || view !== 'loaded') { show('#cust-error'); SM.icons(); }
+          SM.handleError(e);
+        } finally {
+          if (my === reqId) { body.style.opacity = ''; body.removeAttribute('aria-busy'); }
+        }
+      }
+
+      /* ---------- table ---------- */
+      function render() {
+        var pages = Math.max(1, Math.ceil(total / state.pageSize));
+        var start = (state.page - 1) * state.pageSize;
+
+        qs('#cust-table-card').hidden = total === 0;
+        qs('#cust-noresults').hidden = !(total === 0 && searchTerm());
+        qs('#pager').hidden = total === 0;
+
+        qsa('#cust-table-card .th-sort').forEach(function (b) {
+          var field = b.dataset.sort;
+          var on = state.sort.split('-')[0] === field;
+          b.classList.toggle('is-sorted', on);
+          var icon = on ? (state.sort.endsWith('-desc') ? 'chevron-down' : 'chevron-up') : 'chevrons-up-down';
+          b.innerHTML = b.childNodes[0].textContent + '<i data-lucide="' + icon + '"></i>';
+        });
+
+        qs('#cust-body').innerHTML = rows.map(function (c) {
+          return '<tr class="is-clickable" data-id="' + esc(c.id) + '" tabindex="0">' +
+            '<td data-label="Name"><span class="cell-user"><span class="avatar">' + esc(SM.initials(c.name)) + '</span>' +
+              '<span class="cell-user-meta"><span class="cell-user-name">' + esc(c.name) + '</span></span></span></td>' +
+            '<td data-label="Phone" class="tnum">' + (c.phone ? esc(c.phone) : '<span class="cell-muted">—</span>') + '</td>' +
+            '<td data-label="Email">' + (c.email ? esc(c.email) : '<span class="cell-muted">—</span>') + '</td>' +
+            '<td data-label="Orders" class="num">' + c.orders_count + '</td>' +
+            '<td data-label="Total spent" class="num cell-strong">' + fmt(c.lifetime_spend) + '</td>' +
+            '<td data-label="Last order">' + (c.last_order_at ? SM.formatDate(c.last_order_at) : '<span class="cell-muted">No orders yet</span>') + '</td>' +
+            '</tr>';
+        }).join('');
+
+        qs('#page-info').textContent = total ? 'Showing ' + (start + 1) + '–' + Math.min(total, start + rows.length) + ' of ' + total : '';
+        qs('#page-prev').disabled = state.page <= 1;
+        qs('#page-next').disabled = state.page >= pages;
+        var last = Math.min(pages, Math.max(1, state.page - 3) + 6);
+        var first = Math.max(1, last - 6);
+        var btns = '';
+        for (var i = first; i <= last; i++) {
+          btns += '<button type="button" class="page-btn"' + (i === state.page ? ' aria-current="page"' : '') + ' data-page="' + i + '">' + i + '</button>';
+        }
+        qs('#page-btns').innerHTML = btns;
+        SM.icons();
+      }
+
+      /* ---------- drawer ---------- */
+      function renderDrawer(keepDraft) {
+        var c = current;
+        var prev = qs('#drawer-notes');
+        var draft = keepDraft && prev && prev.value !== (c.notes || '') ? prev.value : null;
+
+        var ordersHtml;
+        if (drawerOrders === null) {
+          ordersHtml = '<div class="skeleton sk-block" style="height:56px"></div>';
+        } else if (drawerOrders === false) {
+          ordersHtml = '<p class="muted">Couldn\'t load recent orders.</p>';
+        } else if (drawerOrders.length) {
+          ordersHtml = drawerOrders.map(function (o) {
+            return '<a class="mini-order" href="orders.html#' + esc(o.number) + '">' +
+              '<span class="tnum">' + esc(o.number) + '</span>' +
+              '<span class="mo-date">' + SM.formatDate(o.created_at) + '</span>' +
+              '<span class="spacer"></span>' + SM.badge(o.status) +
+              '<span class="amount">' + fmt(Number(o.total)) + '</span></a>';
+          }).join('');
+        } else {
+          ordersHtml = '<p class="muted">No orders yet for this customer.</p>';
+        }
+
+        qs('#drawer-title').textContent = c.name;
+        qs('#drawer-body').innerHTML =
+          '<div class="stat-mini-grid">' +
+            '<div class="stat-mini"><span class="stat-mini-label">Lifetime spend</span><span class="stat-mini-value">' + fmt(c.lifetime_spend) + '</span></div>' +
+            '<div class="stat-mini"><span class="stat-mini-label">Orders</span><span class="stat-mini-value">' + c.orders_count + '</span></div>' +
+            '<div class="stat-mini"><span class="stat-mini-label">Outstanding</span><span class="stat-mini-value' + (c.outstanding > 0 ? ' is-danger' : '') + '">' + fmt(c.outstanding) + '</span></div>' +
+          '</div>' +
+          '<div class="drawer-meta">' +
+            '<div><span class="meta-label">Email</span><span class="meta-value">' + (c.email ? esc(c.email) : '<span class="cell-muted">—</span>') + '</span></div>' +
+            '<div><span class="meta-label">Phone</span><span class="meta-value tnum">' + (c.phone ? esc(c.phone) : '<span class="cell-muted">—</span>') + '</span></div>' +
+            '<div class="meta-full"><span class="meta-label">Address</span><span class="meta-value">' + (c.address ? esc(c.address) : '<span class="cell-muted">—</span>') + '</span></div>' +
+          '</div>' +
+          '<div class="notes-box">' +
+            '<label class="meta-label" for="drawer-notes">Notes</label>' +
+            '<textarea class="textarea" id="drawer-notes" data-field="notes" placeholder="Add a note about this customer…">' + esc(draft !== null ? draft : (c.notes || '')) + '</textarea>' +
+            '<div class="notes-actions"><button type="button" class="btn btn-secondary btn-sm" id="save-notes-btn" disabled>Save notes</button></div>' +
+          '</div>' +
+          '<h3 class="summary-section">Recent orders</h3>' + ordersHtml;
+        qs('#new-order-link').href = 'order-new.html';
+
+        var notesInput = qs('#drawer-notes'), saveBtn = qs('#save-notes-btn');
+        saveBtn.disabled = notesSaving || notesInput.value === (c.notes || '');
+        notesInput.addEventListener('input', function () {
+          saveBtn.disabled = notesSaving || notesInput.value === (c.notes || '');
+        });
+        saveBtn.addEventListener('click', async function () {
+          var val = notesInput.value.trim();
+          notesSaving = true;
+          SM.setLoading(saveBtn, true, 'Saving…');
+          try {
+            var r = await SM.db.from('customers').update({ notes: val || null }).eq('id', c.id).select('id,notes').maybeSingle();
+            if (r.error) throw r.error;
+            if (!r.data) throw noAccess();
+            c.notes = r.data.notes || '';
+            SM.toast('Notes saved', 'success');
+          } catch (e) {
+            SM.handleError(e);
+          } finally {
+            notesSaving = false;
+            var b = qs('#save-notes-btn'), inp = qs('#drawer-notes');
+            if (current === c && b && inp) {
+              if (b === saveBtn) SM.setLoading(b, false);
+              b.disabled = inp.value === (c.notes || '');
+            }
+          }
+        });
+        SM.icons();
+      }
+
+      async function loadDrawerData(c) {
+        try {
+          var r = await Promise.all([
+            SM.db.from('orders').select('id,number,status,total,created_at')
+              .eq('customer_id', c.id).neq('status', 'cancelled')
+              .order('created_at', { ascending: false }).limit(10),
+            SM.db.from('customer_summary').select(SUM_COLS).eq('customer_id', c.id).maybeSingle()
+          ]);
+          if (current !== c) return;
+          if (r[0].error) throw r[0].error;
+          drawerOrders = r[0].data || [];
+          if (!r[1].error && r[1].data) withStats(c, r[1].data);
+        } catch (e) {
+          if (current !== c) return;
+          drawerOrders = false;
+          SM.handleError(e);
+        }
+        renderDrawer(true);
+      }
+
+      function openDrawerFor(c) {
+        if (!c) return;
+        current = c;
+        drawerOrders = null;
+        renderDrawer(false);
+        SM.openDrawer(qs('.drawer', qs('#drawer-overlay')));
+        loadDrawerData(c);
+      }
+      function rowById(id) {
+        return rows.filter(function (c) { return c.id === id; })[0];
+      }
+
+      qs('#cust-body').addEventListener('click', function (e) {
+        var tr = e.target.closest('tr[data-id]');
+        if (tr) openDrawerFor(rowById(tr.dataset.id));
+      });
+      qs('#cust-body').addEventListener('keydown', function (e) {
+        var tr = e.target.closest('tr[data-id]');
+        if (tr && (e.key === 'Enter' || e.key === ' ')) {
+          e.preventDefault();
+          openDrawerFor(rowById(tr.dataset.id));
+        }
+      });
+
+      /* ---------- add / edit modal ---------- */
+      function openAdd() {
+        editId = null;
+        qs('#cust-modal-title').textContent = 'Add customer';
+        qs('#cust-save-btn').textContent = 'Add customer';
+        qs('#cust-form').reset();
+        SM.clearFieldError(qs('#cf-name')); SM.clearFieldError(qs('#cf-email'));
+        SM.openModal(qs('#cust-overlay .modal'));
+      }
+      function openEdit(c) {
+        editId = c.id;
+        qs('#cust-modal-title').textContent = 'Edit customer';
+        qs('#cust-save-btn').textContent = 'Save customer';
+        qs('#cf-name').value = c.name; qs('#cf-email').value = c.email || '';
+        qs('#cf-phone').value = c.phone || ''; qs('#cf-address').value = c.address || '';
+        qs('#cf-notes').value = c.notes || '';
+        SM.clearFieldError(qs('#cf-name')); SM.clearFieldError(qs('#cf-email'));
+        SM.openModal(qs('#cust-overlay .modal'));
+      }
+      qs('#add-btn').addEventListener('click', openAdd);
+      qs('#empty-add-btn').addEventListener('click', openAdd);
+      qs('#edit-cust-btn').addEventListener('click', function () { if (current) openEdit(current); });
+
+      function validEmail(v) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v); }
+      qs('#cust-form').addEventListener('submit', async function (e) {
+        e.preventDefault();
+        var name = qs('#cf-name').value.trim();
+        var email = qs('#cf-email').value.trim();
+        var ok = true;
+        if (!name) { SM.setFieldError(qs('#cf-name'), 'Name is required.'); ok = false; } else SM.clearFieldError(qs('#cf-name'));
+        if (email && !validEmail(email)) { SM.setFieldError(qs('#cf-email'), 'Enter a valid email address.'); ok = false; } else SM.clearFieldError(qs('#cf-email'));
+        if (!ok) return;
+
+        var data = {
+          name: name,
+          email: email || null,
+          phone: qs('#cf-phone').value.trim() || null,
+          address: qs('#cf-address').value.trim() || null,
+          notes: qs('#cf-notes').value.trim() || null
+        };
+        var editing = editId;
+        var btn = qs('#cust-save-btn');
+        SM.setLoading(btn, true, editing ? 'Saving…' : 'Adding…');
+        try {
+          var res;
+          if (editing) {
+            res = await SM.db.from('customers').update(data).eq('id', editing).select(CUST_COLS).maybeSingle();
+          } else {
+            res = await SM.db.from('customers').insert(Object.assign({ shop_id: ctx.shop.id }, data)).select(CUST_COLS).single();
+          }
+          if (res.error) throw res.error;
+          if (!res.data) throw noAccess();
+
+          if (editing && current && current.id === editing) {
+            Object.assign(current, res.data);
+            renderDrawer(true);
+          }
+          SM.toast(editing ? 'Customer saved' : 'Customer added', 'success'); /* same verb as the button */
+          SM.closeModal(qs('#cust-overlay .modal'));
+          load(false); /* refresh from the database */
+        } catch (err) {
+          SM.handleError(err);
+        } finally {
+          SM.setLoading(btn, false);
+        }
+      });
+
+      /* ---------- toolbar ---------- */
+      qs('#search').addEventListener('input', SM.debounce(function () {
+        state.search = qs('#search').value.trim(); state.page = 1; load(false);
+      }, 300));
+      qs('#clear-search').addEventListener('click', function () {
+        state.search = ''; qs('#search').value = ''; state.page = 1; load(false);
+      });
+      qs('#sort-select').addEventListener('change', function () { state.sort = this.value; state.page = 1; load(false); });
+      qs('#cust-table-card').addEventListener('click', function (e) {
+        var b = e.target.closest('.th-sort');
+        if (!b) return;
+        var field = b.dataset.sort;
+        var cur = state.sort.split('-')[0], curDir = state.sort.split('-')[1];
+        if (cur === field) state.sort = field + '-' + (curDir === 'asc' ? 'desc' : 'asc');
+        else state.sort = field + '-' + (field === 'name' ? 'asc' : 'desc');
+        qs('#sort-select').value = state.sort;
+        state.page = 1; load(false);
+      });
+      qs('#page-btns').addEventListener('click', function (e) {
+        var b = e.target.closest('[data-page]');
+        if (b) { state.page = +b.dataset.page; load(false); }
+      });
+      qs('#page-prev').addEventListener('click', function () { if (state.page > 1) { state.page--; load(false); } });
+      qs('#page-next').addEventListener('click', function () {
+        if (state.page < Math.ceil(total / state.pageSize)) { state.page++; load(false); }
+      });
+
+      /* ---------- boot ---------- */
+      (async function init() {
+        SM.initShell();
+        var demo = new URLSearchParams(window.location.search).get('state');
+        var session = await SM.requireAuth();
+        if (!session) return; /* redirecting to login.html */
+        try {
+          ctx = await SM.loadContext();
+        } catch (e) {
+          show('#cust-error'); SM.icons(); SM.handleError(e);
+          return;
+        }
+        if (demo === 'error') { show('#cust-error'); SM.icons(); return; }
+        if (demo === 'empty') { show('#cust-empty'); SM.icons(); return; }
+        load(true);
+      })();
+    })();
+  </script>
+</body>
+</html>

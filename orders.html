@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Orders · Shop Manager</title>
+  <script>
+    (function () {
+      try {
+        var t = localStorage.getItem('sm-theme') ||
+          (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+        document.documentElement.setAttribute('data-theme', t);
+      } catch (e) {}
+    })();
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/lucide@0.294.0"></script>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body data-nav="orders">
+
+  <!-- ===== Shared shell ===== -->
+  <div class="sidebar-overlay" id="sidebar-overlay"></div>
+  <aside class="sidebar" id="sidebar" aria-label="Main navigation">
+    <div class="sidebar-header">
+      <a class="brand" href="dashboard.html"><span class="brand-mark"><i data-lucide="store"></i></span>Shop Manager</a>
+    </div>
+    <nav class="sidebar-nav">
+      <a class="nav-link" data-nav="dashboard" href="dashboard.html"><i data-lucide="layout-dashboard"></i>Dashboard</a>
+      <a class="nav-link" data-nav="products" href="products.html"><i data-lucide="package"></i>Products</a>
+      <a class="nav-link" data-nav="orders" href="orders.html"><i data-lucide="shopping-cart"></i>Orders</a>
+      <a class="nav-link" data-nav="customers" href="customers.html"><i data-lucide="users"></i>Customers</a>
+      <a class="nav-link" data-nav="suppliers" href="suppliers.html"><i data-lucide="truck"></i>Suppliers</a>
+      <a class="nav-link" data-nav="purchases" href="purchases.html"><i data-lucide="clipboard-list"></i>Purchases</a>
+      <a class="nav-link" data-nav="expenses" href="expenses.html"><i data-lucide="wallet"></i>Expenses</a>
+      <a class="nav-link" data-nav="reports" href="reports.html"><i data-lucide="bar-chart-3"></i>Reports</a>
+      <a class="nav-link" data-nav="settings" href="settings.html"><i data-lucide="settings"></i>Settings</a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-row">
+        <span class="avatar">MC</span>
+        <span class="user-meta"><span class="user-name">Maya Chen</span><span class="user-role">Manager</span></span>
+      </div>
+      <div class="sidebar-footer-row">
+        <span class="text-3" style="font-size:12px;">Northwind Supply Co.</span>
+        <button type="button" class="btn btn-ghost btn-icon btn-sm" data-theme-toggle aria-label="Toggle theme">
+          <i data-lucide="sun" class="i-sun is-hidden"></i><i data-lucide="moon" class="i-moon"></i>
+        </button>
+      </div>
+    </div>
+  </aside>
+  <header class="topbar">
+    <button type="button" class="btn btn-ghost btn-icon" id="nav-toggle" aria-label="Open menu" aria-expanded="false" aria-controls="sidebar">
+      <i data-lucide="menu"></i>
+    </button>
+    <a class="brand" href="dashboard.html"><span class="brand-mark"><i data-lucide="store"></i></span><span class="topbar-title">Shop Manager</span></a>
+    <span class="spacer"></span>
+    <button type="button" class="btn btn-ghost btn-icon" data-theme-toggle aria-label="Toggle theme">
+      <i data-lucide="sun" class="i-sun is-hidden"></i><i data-lucide="moon" class="i-moon"></i>
+    </button>
+  </header>
+  <!-- ===== End shared shell ===== -->
+
+  <main class="main">
+    <!-- skeleton -->
+    <div id="orders-skeleton" aria-hidden="true">
+      <div class="page-header"><div class="skeleton sk-line" style="width:120px;height:20px"></div><div class="skeleton sk-line" style="width:140px;height:44px"></div></div>
+      <div class="skeleton sk-line" style="width:320px;height:40px;margin-bottom:16px"></div>
+      <div class="card"><div class="card-body"><div class="skeleton sk-line" style="width:35%"></div><div class="skeleton sk-block" style="height:280px;margin-top:12px"></div></div></div>
+    </div>
+
+    <!-- error (orders.html?state=error) -->
+    <div class="card" id="orders-error" hidden>
+      <div class="error-state">
+        <div class="empty-icon"><i data-lucide="cloud-off"></i></div>
+        <h1 class="empty-title">Couldn't load orders</h1>
+        <p class="empty-desc">We couldn't reach the server. Check your connection and try again.</p>
+        <button type="button" class="btn btn-primary" onclick="window.location.reload()">Try again</button>
+      </div>
+    </div>
+
+    <!-- empty shop (orders.html?state=empty) -->
+    <div class="card" id="orders-empty" hidden>
+      <div class="empty-state">
+        <div class="empty-icon"><i data-lucide="shopping-cart"></i></div>
+        <h1 class="empty-title">No orders yet</h1>
+        <p class="empty-desc">Orders you take will appear here. Create the first one to get started.</p>
+        <a href="order-new.html" class="btn btn-primary"><i data-lucide="plus"></i>New order</a>
+      </div>
+    </div>
+
+    <!-- loaded -->
+    <div id="orders-loaded" hidden>
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">Orders</h1>
+          <p class="page-sub">Track sales, payments and fulfilment.</p>
+        </div>
+        <div class="page-actions">
+          <a class="btn btn-primary" href="order-new.html"><i data-lucide="plus"></i>New order</a>
+        </div>
+      </div>
+
+      <div class="tabs" id="tabs" role="group" aria-label="Filter by status"></div>
+
+      <div class="table-toolbar">
+        <div class="search-box">
+          <i data-lucide="search"></i>
+          <input class="input" type="search" id="search" placeholder="Search order number or customer" aria-label="Search orders">
+        </div>
+        <div class="select-wrap">
+          <select class="select" id="filter-date" aria-label="Filter by date">
+            <option value="all">All time</option>
+            <option value="today">Today</option>
+            <option value="7d">Last 7 days</option>
+            <option value="30d">Last 30 days</option>
+            <option value="month">This month</option>
+          </select>
+          <i data-lucide="chevron-down" class="select-caret"></i>
+        </div>
+        <div class="select-wrap">
+          <select class="select" id="filter-payment" aria-label="Filter by payment">
+            <option value="all">All payments</option>
+            <option value="unpaid">Unpaid</option>
+            <option value="partial">Partial</option>
+            <option value="paid">Paid</option>
+          </select>
+          <i data-lucide="chevron-down" class="select-caret"></i>
+        </div>
+      </div>
+
+      <!-- bulk bar -->
+      <div class="bulkbar" id="bulkbar" hidden>
+        <span class="bulkbar-count" id="bulk-count"></span>
+        <span class="spacer"></span>
+        <button type="button" class="btn btn-primary btn-sm" id="bulk-complete"><i data-lucide="check-check"></i>Mark completed</button>
+        <button type="button" class="btn btn-secondary btn-sm" id="bulk-export"><i data-lucide="download"></i>Export</button>
+        <button type="button" class="btn btn-ghost btn-sm" id="bulk-clear">Clear</button>
+      </div>
+
+      <div class="table-wrap table-wrap--tall" id="orders-table-card">
+        <table class="table table-responsive">
+          <thead>
+            <tr>
+              <th class="col-check"><input type="checkbox" class="checkbox" id="check-all" aria-label="Select all orders on this page"></th>
+              <th><button type="button" class="th-sort" data-sort="number">Order number<i data-lucide="chevrons-up-down"></i></button></th>
+              <th><button type="button" class="th-sort" data-sort="customer">Customer<i data-lucide="chevrons-up-down"></i></button></th>
+              <th><button type="button" class="th-sort" data-sort="created_at">Date<i data-lucide="chevrons-up-down"></i></button></th>
+              <th class="num">Items</th>
+              <th>Payment</th>
+              <th>Status</th>
+              <th class="num"><button type="button" class="th-sort" data-sort="total">Total<i data-lucide="chevrons-up-down"></i></button></th>
+            </tr>
+          </thead>
+          <tbody id="orders-body"></tbody>
+        </table>
+      </div>
+
+      <div class="card" id="orders-noresults" hidden>
+        <div class="empty-state">
+          <div class="empty-icon"><i data-lucide="search-x"></i></div>
+          <h2 class="empty-title">No orders match</h2>
+          <p class="empty-desc">Try a different search, status, date range or payment filter.</p>
+          <button type="button" class="btn btn-secondary" id="clear-filters">Clear filters</button>
+        </div>
+      </div>
+
+      <div class="pagination" id="pager">
+        <span id="page-info"></span>
+        <span class="pages">
+          <button type="button" class="page-btn" id="page-prev" aria-label="Previous page"><i data-lucide="chevron-left"></i></button>
+          <span id="page-btns" style="display:inline-flex;gap:4px;"></span>
+          <button type="button" class="page-btn" id="page-next" aria-label="Next page"><i data-lucide="chevron-right"></i></button>
+        </span>
+      </div>
+    </div>
+  </main>
+
+  <!-- ===== Order detail drawer ===== -->
+  <div class="overlay overlay--right" id="drawer-overlay" hidden>
+    <aside class="drawer" role="dialog" aria-modal="true" aria-labelledby="drawer-title">
+      <div class="drawer-header">
+        <h2 class="drawer-title" id="drawer-title">Order</h2>
+        <button type="button" class="btn btn-ghost btn-icon btn-sm" data-layer-close aria-label="Close"><i data-lucide="x"></i></button>
+      </div>
+      <div class="drawer-body" id="drawer-body"></div>
+      <div class="drawer-footer" id="drawer-footer"></div>
+    </aside>
+  </div>
+
+  <!-- ===== Record payment modal ===== -->
+  <div class="overlay" id="payment-overlay" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="payment-title">
+      <div class="sheet-handle" aria-hidden="true"></div>
+      <div class="modal-header">
+        <h2 class="modal-title" id="payment-title">Record payment</h2>
+        <button type="button" class="btn btn-ghost btn-icon btn-sm" data-layer-close aria-label="Close"><i data-lucide="x"></i></button>
+      </div>
+      <form id="payment-form" novalidate>
+        <div class="modal-body">
+          <p class="muted mb-16" id="payment-sub"></p>
+          <div class="field">
+            <label class="label" for="pm-amount">Amount</label>
+            <input class="input" type="number" id="pm-amount" data-field="amount" min="0.01" step="0.01" data-autofocus aria-describedby="pm-amount-error">
+            <p class="field-error" id="pm-amount-error" hidden></p>
+          </div>
+          <div class="field">
+            <label class="label" for="pm-method">Method</label>
+            <div class="select-wrap">
+              <select class="select" id="pm-method" data-field="payment_method">
+                <option>Cash</option>
+                <option>Card</option>
+                <option>Bank transfer</option>
+              </select>
+              <i data-lucide="chevron-down" class="select-caret"></i>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-layer-close>Cancel</button>
+          <button type="submit" class="btn btn-primary">Record payment</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ===== Cancel confirm modal ===== -->
+  <div class="overlay" id="cancel-overlay" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="cancel-title">
+      <div class="sheet-handle" aria-hidden="true"></div>
+      <div class="modal-header">
+        <h2 class="modal-title" id="cancel-title">Cancel order</h2>
+        <button type="button" class="btn btn-ghost btn-icon btn-sm" data-layer-close aria-label="Close"><i data-lucide="x"></i></button>
+      </div>
+      <div class="modal-body">
+        <p class="muted">Cancel order <strong id="cancel-number" class="tnum"></strong>? The customer will no longer expect this delivery. This can't be undone in this demo.</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-layer-close>Keep order</button>
+        <button type="button" class="btn btn-danger" id="cancel-confirm">Cancel order</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+  <script>
+    (function () {
+      var qs = SM.qs, qsa = SM.qsa, fmt = SM.formatMoney, esc = SM.escapeHtml;
+      var db = SM.db;
+
+      var LIST_COLS = 'id,number,customer_name,status,payment_status,total,paid_amount,created_at,order_items(count)';
+      var DETAIL_COLS = 'id,number,customer_name,status,payment_status,subtotal,discount_amount,tax_rate,tax_amount,total,paid_amount,created_at,' +
+        'customers(name,email,phone),order_items(id,product_name,qty,unit_price,line_total)';
+      var SORT_COLS = { number: 'number', customer: 'customer_name', created_at: 'created_at', total: 'total' };
+      var METHOD_TO_DB = { 'Cash': 'cash', 'Card': 'card', 'Bank transfer': 'bank_transfer' }; /* UI label -> DB enum */
+
+      var state = { tab: 'all', search: '', date: 'all', payment: 'all', sortKey: 'created_at', sortDir: -1, page: 1, pageSize: 8 };
+      var rows = [];                                   /* current page (server-side) */
+      var totalMatches = 0;                            /* rows matching the filters */
+      var counts = { all: 0, pending: 0, completed: 0, cancelled: 0 };
+      var selection = new Map();                       /* id -> row snapshot (survives paging) */
+      var current = null;                              /* order in the drawer */
+      var reqId = 0, opening = false, writing = false;
+
+      var params = new URLSearchParams(window.location.search);
+      var requested = params.get('status');
+      if (['pending', 'completed', 'cancelled'].indexOf(requested) > -1) state.tab = requested;
+
+      /* ---------- helpers ---------- */
+      function rowById(id) { return rows.filter(function (o) { return o.id === id; })[0]; }
+      function balance(o) { return Math.max(0, Math.round((o.total - o.paid) * 100) / 100); }
+      function shortDate(d) {
+        var f = SM.ctx && SM.ctx.profile && SM.ctx.profile.date_format;
+        var m = d.toLocaleDateString('en-US', { month: 'short' });
+        if (f === 'dmy') return d.getDate() + ' ' + m;
+        if (f === 'iso') return SM.formatDate(d.toISOString());
+        return m + ' ' + d.getDate();
+      }
+      function fmtTime(d) { return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }); }
+      function fmtDateTime(iso) {
+        var d = new Date(iso);
+        return shortDate(d) + ' <span class="cell-muted">· ' + fmtTime(d) + '</span>';
+      }
+      function dateFrom() {
+        var t = new Date(); t.setHours(0, 0, 0, 0);
+        switch (state.date) {
+          case 'today': return t;
+          case '7d': t.setDate(t.getDate() - 6); return t;
+          case '30d': t.setDate(t.getDate() - 29); return t;
+          case 'month': return new Date(t.getFullYear(), t.getMonth(), 1);
+          default: return null;
+        }
+      }
+      function normList(r) {
+        return {
+          id: r.id, number: r.number,
+          customer: r.customer_name || 'Walk-in customer',
+          created_at: r.created_at,
+          items: r.order_items && r.order_items[0] ? Number(r.order_items[0].count) : 0,
+          payment: r.payment_status, status: r.status,
+          total: Number(r.total), paid: Number(r.paid_amount)
+        };
+      }
+      function normDetail(r) {
+        var c = r.customers;
+        return {
+          id: r.id, number: r.number,
+          customer: (c && c.name) || r.customer_name || 'Walk-in customer',
+          contact: c ? [c.email, c.phone].filter(Boolean) : [],
+          created_at: r.created_at, status: r.status, payment: r.payment_status,
+          subtotal: Number(r.subtotal), discount: Number(r.discount_amount),
+          taxRate: Number(r.tax_rate), tax: Number(r.tax_amount),
+          total: Number(r.total), paid: Number(r.paid_amount),
+          items: (r.order_items || []).map(function (it) {
+            return { product: it.product_name, qty: it.qty, unit_price: Number(it.unit_price), line_total: Number(it.line_total) };
+          })
+        };
+      }
+
+      /* ---------- data layer ---------- */
+      async function loadCounts() {
+        var statuses = ['pending', 'completed', 'cancelled'];
+        var res = await Promise.all(statuses.map(function (s) {
+          return db.from('orders').select('id', { count: 'exact', head: true }).eq('status', s);
+        }));
+        res.forEach(function (r) { if (r.error) throw r.error; });
+        statuses.forEach(function (s, i) { counts[s] = res[i].count || 0; });
+        counts.all = counts.pending + counts.completed + counts.cancelled;
+      }
+
+      async function fetchPage() {
+        var my = ++reqId;
+        var card = qs('#orders-table-card');
+        card.setAttribute('aria-busy', 'true'); card.style.opacity = '.6';
+
+        var q = db.from('orders').select(LIST_COLS, { count: 'exact' });
+        if (state.tab !== 'all') q = q.eq('status', state.tab);
+        if (state.payment !== 'all') q = q.eq('payment_status', state.payment);
+        var from = dateFrom();
+        if (from) q = q.gte('created_at', from.toISOString());
+        var term = state.search.replace(/[,()"\\%*_]/g, ' ').trim();
+        if (term) q = q.or('number.ilike.*' + term + '*,customer_name.ilike.*' + term + '*');
+        var start = (state.page - 1) * state.pageSize;
+        q = q.order(SORT_COLS[state.sortKey], { ascending: state.sortDir === 1, nullsFirst: false })
+             .order('id', { ascending: true })
+             .range(start, start + state.pageSize - 1);
+
+        var res = await q;
+        if (my !== reqId) return true;                 /* a newer request superseded this one */
+        card.removeAttribute('aria-busy'); card.style.opacity = '';
+        if (res.error) {
+          if (res.error.code === 'PGRST103' && state.page > 1) { state.page = 1; return fetchPage(); }
+          SM.handleError(res.error);
+          return false;
+        }
+        rows = (res.data || []).map(normList);
+        totalMatches = res.count || 0;
+        /* keep selection snapshots fresh */
+        rows.forEach(function (o) { if (selection.has(o.id)) selection.set(o.id, o); });
+        renderTable();
+        return true;
+      }
+
+      async function fetchDetail(by, val) {
+        var r = await db.from('orders').select(DETAIL_COLS).eq(by, val).maybeSingle();
+        if (r.error) throw r.error;
+        return r.data ? normDetail(r.data) : null;
+      }
+
+      function load() { renderTabs(); return fetchPage(); }
+
+      /* after any write: re-read everything from the database */
+      async function refreshAfterWrite(id) {
+        try {
+          var out = await Promise.all([loadCounts(), fetchPage(), id ? fetchDetail('id', id) : null]);
+          if (out[2]) { current = out[2]; renderDrawer(); }
+          renderTabs();
+        } catch (e) { SM.handleError(e); }
+      }
+
+      /* ---------- tabs ---------- */
+      function renderTabs() {
+        var defs = [['all', 'All'], ['pending', 'Pending'], ['completed', 'Completed'], ['cancelled', 'Cancelled']];
+        qs('#tabs').innerHTML = defs.map(function (d) {
+          return '<button type="button" class="tab' + (state.tab === d[0] ? ' is-active' : '') + '"' +
+            (state.tab === d[0] ? ' aria-current="true"' : '') + ' data-tab="' + d[0] + '">' +
+            d[1] + '<span class="tab-count">' + counts[d[0]] + '</span></button>';
+        }).join('');
+      }
+
+      /* ---------- table ---------- */
+      function renderTable() {
+        var total = totalMatches;
+        var pages = Math.max(1, Math.ceil(total / state.pageSize));
+        var start = (state.page - 1) * state.pageSize;
+
+        qs('#orders-table-card').hidden = total === 0;
+        qs('#orders-noresults').hidden = !(total === 0 && counts.all > 0);
+        qs('#pager').hidden = total === 0;
+
+        qsa('#orders-table-card .th-sort').forEach(function (b) {
+          var on = b.dataset.sort === state.sortKey;
+          b.classList.toggle('is-sorted', on);
+          var icon = on ? (state.sortDir === 1 ? 'chevron-up' : 'chevron-down') : 'chevrons-up-down';
+          b.innerHTML = b.childNodes[0].textContent + '<i data-lucide="' + icon + '"></i>';
+        });
+
+        qs('#orders-body').innerHTML = rows.map(function (o) {
+          return '<tr class="is-clickable" data-id="' + esc(o.id) + '" tabindex="0">' +
+            '<td data-label=""><input type="checkbox" class="checkbox row-check" data-id="' + esc(o.id) + '"' +
+              (selection.has(o.id) ? ' checked' : '') + ' aria-label="Select order ' + esc(o.number) + '"></td>' +
+            '<td data-label="Order"><span class="cell-strong tnum">' + esc(o.number) + '</span></td>' +
+            '<td data-label="Customer">' + esc(o.customer) + '</td>' +
+            '<td data-label="Date">' + fmtDateTime(o.created_at) + '</td>' +
+            '<td data-label="Items" class="num">' + o.items + '</td>' +
+            '<td data-label="Payment">' + SM.badge(o.payment) + '</td>' +
+            '<td data-label="Status">' + SM.badge(o.status) + '</td>' +
+            '<td data-label="Total" class="num cell-strong">' + fmt(o.total) + '</td>' +
+            '</tr>';
+        }).join('');
+
+        qs('#page-info').textContent = total ? 'Showing ' + (start + 1) + '–' + Math.min(total, start + rows.length) + ' of ' + total : '';
+        qs('#page-prev').disabled = state.page <= 1;
+        qs('#page-next').disabled = state.page >= pages;
+        var first = Math.max(1, Math.min(state.page - 3, pages - 6)), last = Math.min(pages, first + 6), btns = '';
+        for (var i = first; i <= last; i++) {
+          btns += '<button type="button" class="page-btn"' + (i === state.page ? ' aria-current="page"' : '') + ' data-page="' + i + '">' + i + '</button>';
+        }
+        qs('#page-btns').innerHTML = btns;
+        syncCheckAll();
+        SM.icons();
+      }
+
+      /* ---------- selection ---------- */
+      function visibleRows() { return qsa('#orders-body .row-check'); }
+      function syncCheckAll() {
+        var boxes = visibleRows();
+        var checked = boxes.filter(function (b) { return b.checked; }).length;
+        var all = qs('#check-all');
+        all.checked = boxes.length > 0 && checked === boxes.length;
+        all.indeterminate = checked > 0 && checked < boxes.length;
+        qs('#bulkbar').hidden = selection.size === 0;
+        qs('#bulk-count').textContent = selection.size + ' selected';
+      }
+      function toggleSelect(id, on) {
+        var o = rowById(id);
+        if (on && o) selection.set(id, o); else selection.delete(id);
+      }
+      qs('#check-all').addEventListener('change', function () {
+        visibleRows().forEach(function (b) {
+          b.checked = qs('#check-all').checked;
+          toggleSelect(b.dataset.id, b.checked);
+        });
+        syncCheckAll();
+      });
+      qs('#orders-body').addEventListener('change', function (e) {
+        var box = e.target.closest('.row-check');
+        if (!box) return;
+        toggleSelect(box.dataset.id, box.checked);
+        syncCheckAll();
+      });
+      qs('#bulk-clear').addEventListener('click', function () {
+        selection.clear(); renderTable();
+      });
+      qs('#bulk-complete').addEventListener('click', async function () {
+        if (writing) return;
+        var btn = this;
+        var targets = Array.from(selection.values()).filter(function (o) { return o.status === 'pending'; });
+        writing = true;
+        SM.setLoading(btn, true, 'Completing…');
+        var n = 0, firstErr = null;
+        for (var i = 0; i < targets.length; i++) {
+          var r = await db.rpc('complete_order', { p_order_id: targets[i].id });
+          if (r.error) { if (!firstErr) firstErr = r.error; } else n++;
+        }
+        writing = false;
+        SM.setLoading(btn, false);
+        selection.clear();
+        if (n || !firstErr) SM.toast(n === 1 ? 'Order marked completed' : n + ' orders marked completed', n ? 'success' : 'info');
+        if (firstErr) SM.handleError(firstErr);
+        await refreshAfterWrite(null);
+        renderTable();
+      });
+      qs('#bulk-export').addEventListener('click', function () {
+        var list = Array.from(selection.values());
+        if (!list.length) { SM.toast('Select at least one order to export', 'info'); return; }
+        downloadCsv('orders-selected.csv', list.map(function (o) {
+          return [o.number, o.customer, new Date(o.created_at).toISOString().slice(0, 10),
+                  o.items, o.payment, o.status, o.total.toFixed(2)];
+        }));
+        SM.toast('Orders exported', 'success');
+      });
+
+      /* ---------- csv ---------- */
+      function csvCell(v) {
+        var s = String(v);
+        if (/^[=+\-@\t\r]/.test(s)) s = "'" + s;            /* spreadsheet formula injection guard */
+        return /[",\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+      }
+      function downloadCsv(name, data) {
+        var head = 'number,customer,date,items,payment,status,total';
+        var blob = new Blob([head + '\n' + data.map(function (r) { return r.map(csvCell).join(','); }).join('\n')], { type: 'text/csv' });
+        var a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = name;
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(function () { URL.revokeObjectURL(a.href); }, 500);
+      }
+
+      /* ---------- drawer ---------- */
+      function renderDrawer() {
+        var o = current;
+        if (!o) return;
+        var bal = balance(o);
+        var d = new Date(o.created_at);
+
+        qs('#drawer-title').textContent = 'Order ' + o.number;
+        qs('#drawer-body').innerHTML =
+          '<div class="drawer-meta">' +
+            '<div><span class="meta-label">Customer</span><span class="meta-value">' + esc(o.customer) + '</span></div>' +
+            '<div><span class="meta-label">Date</span><span class="meta-value">' +
+              SM.formatDate(o.created_at) + ' <span class="cell-muted">· ' + fmtTime(d) + '</span></span></div>' +
+            '<div><span class="meta-label">Payment</span><span class="meta-value">' + SM.badge(o.payment) +
+              (o.paid > 0 && o.payment !== 'paid' ? ' <span class="cell-muted">' + fmt(o.paid) + ' paid</span>' : '') + '</span></div>' +
+            '<div><span class="meta-label">Status</span><span class="meta-value">' + SM.badge(o.status) + '</span></div>' +
+            '<div class="meta-full"><span class="meta-label">Contact</span><span class="meta-value">' +
+              (o.contact.length ? esc(o.contact[0]) + (o.contact[1] ? ' <span class="cell-muted">· ' + esc(o.contact[1]) + '</span>' : '')
+                                : '<span class="cell-muted">No contact on file</span>') +
+            '</span></div>' +
+          '</div>' +
+          '<div class="table-wrap"><table class="table items-table">' +
+            '<thead><tr><th>Product</th><th class="num">Qty</th><th class="num">Unit price</th><th class="num">Total</th></tr></thead>' +
+            '<tbody>' + o.items.map(function (it) {
+              return '<tr><td data-field="product">' + esc(it.product) + '</td>' +
+                '<td class="num" data-field="qty">' + it.qty + '</td>' +
+                '<td class="num" data-field="unit_price">' + fmt(it.unit_price) + '</td>' +
+                '<td class="num cell-strong">' + fmt(it.line_total) + '</td></tr>';
+            }).join('') + '</tbody></table></div>' +
+          '<div class="totals">' +
+            '<div class="totals-row"><span>Subtotal</span><span>' + fmt(o.subtotal) + '</span></div>' +
+            (o.discount > 0 ? '<div class="totals-row"><span>Discount</span><span>-' + fmt(o.discount) + '</span></div>' : '') +
+            (o.tax > 0 ? '<div class="totals-row"><span>Tax (' + o.taxRate + '%)</span><span>' + fmt(o.tax) + '</span></div>' : '') +
+            (o.paid > 0 ? '<div class="totals-row"><span>Paid</span><span>' + fmt(o.paid) + '</span></div>' : '') +
+            (bal > 0 ? '<div class="totals-row"><span>Balance due</span><span>' + fmt(bal) + '</span></div>' : '') +
+            '<div class="totals-row is-total"><span>Total</span><span>' + fmt(o.total) + '</span></div>' +
+          '</div>';
+
+        qs('#drawer-footer').innerHTML =
+          '<button type="button" class="btn btn-primary btn-sm" data-action="complete"' + (o.status === 'pending' ? '' : ' disabled') + '><i data-lucide="check-check"></i>Mark completed</button>' +
+          '<button type="button" class="btn btn-secondary btn-sm" data-action="payment"' + (o.payment === 'paid' || o.status === 'cancelled' ? ' disabled' : '') + '><i data-lucide="hand-coins"></i>Record payment</button>' +
+          (SM.isManager() ? '<button type="button" class="btn btn-danger-secondary btn-sm" data-action="cancel"' + (o.status === 'pending' ? '' : ' disabled') + '><i data-lucide="ban"></i>Cancel order</button>' : '') +
+          '<span class="spacer"></span>' +
+          '<button type="button" class="btn btn-ghost btn-sm" data-action="print"><i data-lucide="printer"></i>Print</button>';
+        SM.icons();
+      }
+      async function openDrawerFor(by, val, silent) {
+        if (opening) return;
+        opening = true;
+        try {
+          var d = await fetchDetail(by, val);
+          if (!d) { if (!silent) SM.toast('Order not found', 'error'); return; }
+          current = d;
+          renderDrawer();
+          SM.openDrawer(qs('.drawer', qs('#drawer-overlay')));
+        } catch (e) { SM.handleError(e); }
+        finally { opening = false; }
+      }
+      qs('#drawer-footer').addEventListener('click', async function (e) {
+        var btn = e.target.closest('[data-action]');
+        if (!btn || btn.disabled || writing) return;
+        var o = current;
+        if (btn.dataset.action === 'complete') {
+          writing = true;
+          SM.setLoading(btn, true, 'Completing…');
+          try {
+            var r = await db.rpc('complete_order', { p_order_id: o.id });
+            if (r.error) throw r.error;
+            SM.toast('Order marked completed', 'success');
+            await refreshAfterWrite(o.id);
+          } catch (err) { SM.handleError(err); }
+          finally { writing = false; SM.setLoading(btn, false); }
+        } else if (btn.dataset.action === 'payment') {
+          qs('#payment-sub').innerHTML = 'Order <strong class="tnum">' + esc(o.number) + '</strong> · balance due <strong>' + fmt(balance(o)) + '</strong>';
+          qs('#pm-amount').value = balance(o).toFixed(2);
+          SM.clearFieldError(qs('#pm-amount'));
+          SM.openModal(qs('#payment-overlay .modal'));
+        } else if (btn.dataset.action === 'cancel') {
+          qs('#cancel-number').textContent = o.number;
+          SM.openModal(qs('#cancel-overlay .modal'));
+        } else if (btn.dataset.action === 'print') {
+          window.print();
+        }
+      });
+
+      /* record payment submit */
+      qs('#payment-form').addEventListener('submit', async function (e) {
+        e.preventDefault();
+        if (writing) return;
+        var o = current, input = qs('#pm-amount');
+        var amt = parseFloat(input.value);
+        var bal = balance(o);
+        if (isNaN(amt) || amt <= 0) { SM.setFieldError(input, 'Enter an amount greater than zero.'); return; }
+        if (amt > bal + 0.005) { SM.setFieldError(input, 'Amount can\'t exceed the balance due (' + fmt(bal) + ').'); return; }
+        SM.clearFieldError(input);
+        var sel = qs('#pm-method');
+        var method = METHOD_TO_DB[sel.options[sel.selectedIndex].text] || 'cash';
+        var btn = qs('#payment-form button[type="submit"]');
+        writing = true;
+        SM.setLoading(btn, true, 'Recording…');
+        try {
+          var r = await db.rpc('record_payment', { p_order_id: o.id, p_amount: Math.round(amt * 100) / 100, p_method: method });
+          if (r.error) throw r.error;
+          SM.closeModal(qs('#payment-overlay .modal'));
+          SM.toast('Payment recorded', 'success'); /* same verb as the button */
+          await refreshAfterWrite(o.id);
+        } catch (err) { SM.handleError(err); }
+        finally { writing = false; SM.setLoading(btn, false); }
+      });
+
+      /* cancel confirm */
+      qs('#cancel-confirm').addEventListener('click', async function () {
+        if (writing) return;
+        var o = current, btn = this;
+        writing = true;
+        SM.setLoading(btn, true, 'Cancelling…');
+        try {
+          var r = await db.rpc('cancel_order', { p_order_id: o.id });
+          if (r.error) throw r.error;
+          SM.closeModal(qs('#cancel-overlay .modal'));
+          SM.toast('Order cancelled', 'success'); /* same verb as the button */
+          await refreshAfterWrite(o.id);
+        } catch (err) { SM.handleError(err); }
+        finally { writing = false; SM.setLoading(btn, false); }
+      });
+
+      /* ---------- table interactions ---------- */
+      qs('#orders-body').addEventListener('click', function (e) {
+        if (e.target.closest('.row-check')) return;
+        var tr = e.target.closest('tr[data-id]');
+        if (tr) openDrawerFor('id', tr.dataset.id);
+      });
+      qs('#orders-body').addEventListener('keydown', function (e) {
+        if (e.target.closest('.row-check')) return;
+        var tr = e.target.closest('tr[data-id]');
+        if (tr && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); openDrawerFor('id', tr.dataset.id); }
+      });
+      qsa('#orders-table-card .th-sort').forEach(function (b) {
+        b.addEventListener('click', function () {
+          var key = b.dataset.sort;
+          if (state.sortKey === key) state.sortDir *= -1;
+          else { state.sortKey = key; state.sortDir = key === 'created_at' ? -1 : 1; }
+          state.page = 1; fetchPage();
+        });
+      });
+      qs('#tabs').addEventListener('click', function (e) {
+        var t = e.target.closest('[data-tab]');
+        if (t) { state.tab = t.dataset.tab; state.page = 1; load(); }
+      });
+      qs('#search').addEventListener('input', SM.debounce(function () {
+        state.search = qs('#search').value.trim(); state.page = 1; fetchPage();
+      }, 300));
+      qs('#filter-date').addEventListener('change', function () { state.date = this.value; state.page = 1; fetchPage(); });
+      qs('#filter-payment').addEventListener('change', function () { state.payment = this.value; state.page = 1; fetchPage(); });
+      qs('#clear-filters').addEventListener('click', function () {
+        state.search = ''; state.date = 'all'; state.payment = 'all'; state.tab = 'all'; state.page = 1;
+        qs('#search').value = ''; qs('#filter-date').value = 'all'; qs('#filter-payment').value = 'all';
+        load();
+      });
+      qs('#page-btns').addEventListener('click', function (e) {
+        var b = e.target.closest('[data-page]');
+        if (b) { state.page = +b.dataset.page; fetchPage(); }
+      });
+      qs('#page-prev').addEventListener('click', function () { if (state.page > 1) { state.page--; fetchPage(); } });
+      qs('#page-next').addEventListener('click', function () { state.page++; fetchPage(); });
+
+      /* ---------- boot ---------- */
+      (async function init() {
+        function show(el) {
+          [qs('#orders-skeleton'), qs('#orders-loaded'), qs('#orders-empty'), qs('#orders-error')].forEach(function (x) { x.hidden = x !== el; });
+        }
+        SM.initShell();
+        try {
+          var session = await SM.requireAuth();
+          if (!session) return;                         /* redirecting to login */
+          await SM.loadContext();
+          await loadCounts();
+        } catch (e) {
+          SM.handleError(e);
+          show(qs('#orders-error')); SM.icons(); return;
+        }
+        if (counts.all === 0) { show(qs('#orders-empty')); SM.icons(); return; }
+
+        /* reflect the ?status= tab in the controls before the first fetch */
+        show(qs('#orders-loaded'));
+        renderTabs();
+        var ok = await fetchPage();
+        if (!ok) { show(qs('#orders-error')); SM.icons(); return; }
+
+        /* deep link: orders.html#ORD-1042 opens the drawer */
+        var num = decodeURIComponent(window.location.hash.replace('#', ''));
+        if (num) openDrawerFor('number', num, true);
+      })();
+    })();
+  </script>
+</body>
+</html>

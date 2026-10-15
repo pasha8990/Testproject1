@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Products · Shop Manager</title>
+  <script>
+    (function () {
+      try {
+        var t = localStorage.getItem('sm-theme') ||
+          (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+        document.documentElement.setAttribute('data-theme', t);
+      } catch (e) {}
+    })();
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/lucide@0.294.0"></script>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body data-nav="products">
+
+  <!-- ===== Shared shell ===== -->
+  <div class="sidebar-overlay" id="sidebar-overlay"></div>
+  <aside class="sidebar" id="sidebar" aria-label="Main navigation">
+    <div class="sidebar-header">
+      <a class="brand" href="dashboard.html"><span class="brand-mark"><i data-lucide="store"></i></span>Shop Manager</a>
+    </div>
+    <nav class="sidebar-nav">
+      <a class="nav-link" data-nav="dashboard" href="dashboard.html"><i data-lucide="layout-dashboard"></i>Dashboard</a>
+      <a class="nav-link" data-nav="products" href="products.html"><i data-lucide="package"></i>Products</a>
+      <a class="nav-link" data-nav="orders" href="orders.html"><i data-lucide="shopping-cart"></i>Orders</a>
+      <a class="nav-link" data-nav="customers" href="customers.html"><i data-lucide="users"></i>Customers</a>
+      <a class="nav-link" data-nav="suppliers" href="suppliers.html"><i data-lucide="truck"></i>Suppliers</a>
+      <a class="nav-link" data-nav="purchases" href="purchases.html"><i data-lucide="clipboard-list"></i>Purchases</a>
+      <a class="nav-link" data-nav="expenses" href="expenses.html"><i data-lucide="wallet"></i>Expenses</a>
+      <a class="nav-link" data-nav="reports" href="reports.html"><i data-lucide="bar-chart-3"></i>Reports</a>
+      <a class="nav-link" data-nav="settings" href="settings.html"><i data-lucide="settings"></i>Settings</a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-row">
+        <span class="avatar">MC</span>
+        <span class="user-meta"><span class="user-name">Maya Chen</span><span class="user-role">Manager</span></span>
+      </div>
+      <div class="sidebar-footer-row">
+        <span class="text-3" style="font-size:12px;">Northwind Supply Co.</span>
+        <button type="button" class="btn btn-ghost btn-icon btn-sm" data-theme-toggle aria-label="Toggle theme">
+          <i data-lucide="sun" class="i-sun is-hidden"></i><i data-lucide="moon" class="i-moon"></i>
+        </button>
+      </div>
+    </div>
+  </aside>
+  <header class="topbar">
+    <button type="button" class="btn btn-ghost btn-icon" id="nav-toggle" aria-label="Open menu" aria-expanded="false" aria-controls="sidebar">
+      <i data-lucide="menu"></i>
+    </button>
+    <a class="brand" href="dashboard.html"><span class="brand-mark"><i data-lucide="store"></i></span><span class="topbar-title">Shop Manager</span></a>
+    <span class="spacer"></span>
+    <button type="button" class="btn btn-ghost btn-icon" data-theme-toggle aria-label="Toggle theme">
+      <i data-lucide="sun" class="i-sun is-hidden"></i><i data-lucide="moon" class="i-moon"></i>
+    </button>
+  </header>
+  <!-- ===== End shared shell ===== -->
+
+  <main class="main">
+    <!-- skeleton -->
+    <div id="prod-skeleton" aria-hidden="true">
+      <div class="page-header"><div class="skeleton sk-line" style="width:140px;height:20px"></div><div class="skeleton sk-line" style="width:300px;height:36px"></div></div>
+      <div class="card mb-16"><div class="card-body"><div class="skeleton sk-line" style="width:40%"></div><div class="skeleton sk-block" style="height:300px;margin-top:12px"></div></div></div>
+    </div>
+
+    <!-- error state (demo: products.html?state=error) -->
+    <div class="card" id="prod-error" hidden>
+      <div class="error-state">
+        <div class="empty-icon"><i data-lucide="cloud-off"></i></div>
+        <h1 class="empty-title">Couldn't load products</h1>
+        <p class="empty-desc">We couldn't reach the server. Check your connection and try again.</p>
+        <button type="button" class="btn btn-primary" onclick="window.location.reload()">Try again</button>
+      </div>
+    </div>
+
+    <!-- empty state: brand new shop (demo: products.html?state=empty) -->
+    <div class="card" id="prod-first" hidden>
+      <div class="empty-state">
+        <div class="empty-icon"><i data-lucide="package-plus"></i></div>
+        <h1 class="empty-title">Add your first product</h1>
+        <p class="empty-desc">Products are what you sell. Add them one by one, or paste rows straight from Excel.</p>
+        <button type="button" class="btn btn-primary" id="first-add-btn"><i data-lucide="plus"></i>Add product</button>
+      </div>
+    </div>
+
+    <!-- loaded -->
+    <div id="prod-loaded" hidden>
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">Products</h1>
+          <p class="page-sub">Edit cells inline, like a spreadsheet.</p>
+        </div>
+        <div class="page-actions">
+          <a class="btn btn-ghost" href="inventory.html"><i data-lucide="boxes"></i>Inventory</a>
+          <button type="button" class="btn btn-secondary" id="import-btn"><i data-lucide="upload"></i>Import</button>
+          <button type="button" class="btn btn-secondary" id="export-btn"><i data-lucide="download"></i>Export</button>
+          <button type="button" class="btn btn-primary" id="add-btn"><i data-lucide="plus"></i>Add product</button>
+        </div>
+      </div>
+
+      <div class="table-toolbar">
+        <div class="search-box">
+          <i data-lucide="search"></i>
+          <input class="input" type="search" id="search" placeholder="Search SKU, name or category" aria-label="Search products">
+        </div>
+        <div class="select-wrap">
+          <select class="select" id="filter-category" aria-label="Filter by category"></select>
+          <i data-lucide="chevron-down" class="select-caret"></i>
+        </div>
+        <div class="chip-group" role="group" aria-label="Stock filter">
+          <button type="button" class="chip" data-chip="all">All</button>
+          <button type="button" class="chip" data-chip="low">Low stock</button>
+          <button type="button" class="chip" data-chip="out">Out of stock</button>
+          <button type="button" class="chip" data-chip="inactive">Inactive</button>
+        </div>
+        <span class="toolbar-hint" title="Columns: SKU, Name, Category, Cost, Price, In stock, Reorder at, Active">
+          <i data-lucide="clipboard-paste"></i>Paste rows from Excel to add many at once
+        </span>
+      </div>
+
+      <!-- grid -->
+      <div id="grid-area">
+        <div class="card grid-card" id="grid-root">
+          <div class="grid-scroll">
+            <table class="grid-table">
+              <thead id="grid-head"></thead>
+              <tbody id="grid-body"></tbody>
+            </table>
+          </div>
+          <div class="grid-bottombar">
+            <span id="count-line"></span>
+            <span class="grid-hint">Arrows move · Enter or double-click edits · Tab next cell · Esc exits</span>
+            <span class="save-state is-saved" id="save-state" aria-live="polite"></span>
+          </div>
+        </div>
+        <div class="product-cards" id="product-cards"></div>
+        <div class="pagination" id="pager">
+          <span id="page-info"></span>
+          <span class="pages">
+            <button type="button" class="page-btn" id="page-prev" aria-label="Previous page"><i data-lucide="chevron-left"></i></button>
+            <span id="page-btns" style="display:inline-flex;gap:4px;"></span>
+            <button type="button" class="page-btn" id="page-next" aria-label="Next page"><i data-lucide="chevron-right"></i></button>
+          </span>
+        </div>
+      </div>
+
+      <!-- no results for current filters -->
+      <div class="card" id="grid-empty" hidden>
+        <div class="empty-state">
+          <div class="empty-icon"><i data-lucide="search-x"></i></div>
+          <h2 class="empty-title">No products match</h2>
+          <p class="empty-desc">Try a different search, category or stock filter.</p>
+          <button type="button" class="btn btn-secondary" id="clear-filters">Clear filters</button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <input type="file" id="import-file" accept=".csv,text/csv" hidden>
+
+  <!-- Add / edit product modal (bottom sheet on mobile) -->
+  <div class="overlay" id="product-overlay" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="product-modal-title" id="product-modal">
+      <div class="sheet-handle" aria-hidden="true"></div>
+      <div class="modal-header">
+        <h2 class="modal-title" id="product-modal-title">Add product</h2>
+        <button type="button" class="btn btn-ghost btn-icon btn-sm" data-layer-close aria-label="Close"><i data-lucide="x"></i></button>
+      </div>
+      <form id="product-form" novalidate>
+        <div class="modal-body">
+          <div class="form-grid">
+            <div class="field">
+              <label class="label" for="f-sku">SKU</label>
+              <input class="input" id="f-sku" data-field="sku" placeholder="SKU-1001">
+            </div>
+            <div class="field">
+              <label class="label" for="f-category">Category</label>
+              <input class="input" id="f-category" data-field="category" list="category-list" placeholder="e.g. Coffee">
+              <datalist id="category-list"></datalist>
+            </div>
+          </div>
+          <div class="field">
+            <label class="label" for="f-name">Name</label>
+            <input class="input" id="f-name" data-field="name" placeholder="e.g. Arabica coffee beans 1kg" data-autofocus aria-describedby="name-error" required>
+            <p class="field-error" id="name-error" hidden></p>
+          </div>
+          <div class="form-grid">
+            <div class="field">
+              <label class="label" for="f-cost">Cost</label>
+              <input class="input" type="number" id="f-cost" data-field="cost" min="0" step="0.01" placeholder="0.00">
+            </div>
+            <div class="field">
+              <label class="label" for="f-price">Price</label>
+              <input class="input" type="number" id="f-price" data-field="price" min="0" step="0.01" placeholder="0.00">
+            </div>
+            <div class="field">
+              <label class="label" for="f-stock">In stock</label>
+              <input class="input" type="number" id="f-stock" data-field="stock" min="0" step="1" placeholder="0">
+            </div>
+            <div class="field">
+              <label class="label" for="f-reorder">Reorder at</label>
+              <input class="input" type="number" id="f-reorder" data-field="reorder_level" min="0" step="1" placeholder="0">
+            </div>
+          </div>
+          <label class="label-inline"><input type="checkbox" class="checkbox" id="f-active" data-field="active" checked> Active</label>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-layer-close>Cancel</button>
+          <button type="submit" class="btn btn-primary" id="save-product-btn">Save product</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+  <script>
+    (function () {
+      var qs = SM.qs, qsa = SM.qsa, fmt = SM.formatMoney, esc = SM.escapeHtml;
+
+      /* ============ data ============ */
+            var COLS = [
+        { key: 'sku',           label: 'SKU',        type: 'text' },
+        { key: 'name',          label: 'Name',       type: 'text' },
+        { key: 'category',      label: 'Category',   type: 'text' },
+        { key: 'cost',          label: 'Cost',       type: 'number', num: true },
+        { key: 'price',         label: 'Price',      type: 'number', num: true },
+        { key: 'stock',         label: 'In stock',   type: 'int',    num: true },
+        { key: 'reorder_level', label: 'Reorder at', type: 'int',    num: true },
+        { key: 'active',        label: 'Active',     type: 'bool' }
+      ];
+      var COL_MAP = {}; COLS.forEach(function (c) { COL_MAP[c.key] = c; });
+
+      var state = { search: '', category: 'all', chip: 'all', sortKey: 'name', sortDir: 1, page: 1, pageSize: 10 };
+      var params = new URLSearchParams(window.location.search);
+      if (['low', 'out', 'inactive'].indexOf(params.get('filter')) > -1) state.chip = params.get('filter');
+
+      function byId(id) { return PRODUCTS.filter(function (p) { return p.id === id; })[0]; }
+      function stockClass(p) { return p.stock === 0 ? 'cell-out' : (p.stock <= p.reorder_level ? 'cell-low' : ''); }
+
+      /* ============ save state (bottom bar) ============ */
+            function setSave(s) {
+        var el = qs('#save-state');
+        el.className = 'save-state is-' + s;
+        el.innerHTML = s === 'saved' ? '<i data-lucide="check"></i>All changes saved'
+          : s === 'saving' ? '<span class="spinner" aria-hidden="true"></span>Saving…'
+          : '<i data-lucide="pencil"></i>Unsaved changes';
+        SM.icons();
+      }
+
+      /* ============ data layer (Supabase) ============ */
+      var db = SM.db, COLUMNS = 'id,sku,name,category,cost,price,stock,reorder_level,active';
+      var KEYS = COLS.map(function (c) { return c.key; });
+      var PRODUCTS = [], TOTAL = 0, HAS_ANY = null, STOCK_VALUE = null, valueCache = null, loadToken = 0;
+      var READONLY = true, booted = false, pending = {}, saveT, flushing = false;
+
+      function byId(id) { return PRODUCTS.filter(function (p) { return p.id === id; })[0]; }
+      function dbErr(e) {
+        var c = e && e.code;
+        if (c === '23505') e.userMessage = 'That SKU is already used by another product.';
+        else if (c === '23514') e.userMessage = "Check the values: name is required and cost, price and stock can't be negative.";
+        else if (c === '23503') e.userMessage = "This product has sales or purchases and can't be deleted. Deactivate it instead.";
+        return e;
+      }
+      function money(v) { var n = parseFloat(v); return isNaN(n) ? 0 : Math.round(Math.max(0, n) * 100) / 100; }
+      function intv(v) { return Math.max(0, parseInt(v, 10) || 0); }
+      function sumValue(a) { return a.reduce(function (t, p) { return t + Number(p.stock) * Number(p.cost); }, 0); }
+      function isLow(p) { return p.active && p.stock > 0 && p.stock <= p.reorder_level; }
+      function show(el) {
+        [qs('#prod-skeleton'), qs('#prod-loaded'), qs('#prod-first'), qs('#prod-error')].forEach(function (x) { x.hidden = x !== el; });
+      }
+      function renderCount() {
+        qs('#count-line').innerHTML = '<strong>' + TOTAL + '</strong> ' + (TOTAL === 1 ? 'item' : 'items') +
+          ' · Stock value <strong>' + (STOCK_VALUE == null ? '…' : fmt(STOCK_VALUE)) + '</strong>';
+      }
+
+      function applyFilters(q) {
+        if (state.category !== 'all') q = q.eq('category', state.category);
+        if (state.chip === 'out') q = q.eq('stock', 0);
+        if (state.chip === 'inactive') q = q.eq('active', false);
+        if (state.chip === 'low') q = q.eq('active', true).gt('stock', 0); /* stock <= reorder_level is finished client-side */
+        if (state.search) {
+          var t = state.search.replace(/[\\%_]/g, '\\$&').replace(/[\\"]/g, '\\$&');
+          var pat = '"%' + t + '%"';
+          q = q.or('sku.ilike.' + pat + ',name.ilike.' + pat + ',category.ilike.' + pat);
+        }
+        return q;
+      }
+      function sorted(q, bySort) {
+        return (bySort ? q.order(state.sortKey, { ascending: state.sortDir === 1 }) : q).order('id');
+      }
+      async function fetchAll(select, bySort) {
+        var out = [];
+        for (var from = 0; from < 20000; from += 1000) {
+          var r = await sorted(applyFilters(db.from('products').select(select)), bySort).range(from, from + 999);
+          if (r.error) throw r.error;
+          out = out.concat(r.data);
+          if (r.data.length < 1000) break;
+        }
+        return out;
+      }
+
+      async function load(silent) {
+        var token = ++loadToken, grid = qs('#grid-root');
+        grid.setAttribute('aria-busy', 'true'); grid.style.opacity = '.6';
+        try {
+          var rows, total, value = null, start = (state.page - 1) * state.pageSize;
+          var key = state.search + '|' + state.category + '|' + state.chip;
+          if (state.chip === 'low') {
+            var all = (await fetchAll(COLUMNS, true)).filter(isLow);
+            total = all.length; rows = all.slice(start, start + state.pageSize); value = sumValue(all);
+          } else {
+            var r = await sorted(applyFilters(db.from('products').select(COLUMNS, { count: 'exact' })), true)
+              .range(start, start + state.pageSize - 1);
+            if (r.error) throw r.error;
+            rows = r.data; total = r.count || 0;
+            if (start === 0 && rows.length === total) value = sumValue(rows);
+          }
+          if (token !== loadToken) return true;
+          if (!rows.length && total > 0 && state.page > 1) { state.page = Math.ceil(total / state.pageSize); return load(silent); }
+          if (total > 0) HAS_ANY = true;
+          else if (!state.search && state.category === 'all' && state.chip === 'all') HAS_ANY = false;
+          else if (HAS_ANY === null) {
+            var h = await db.from('products').select('id', { count: 'exact', head: true });
+            if (h.error) throw h.error;
+            HAS_ANY = h.count > 0;
+          }
+          rows.forEach(function (p) { if (pending[p.id]) Object.assign(p, pending[p.id]); });
+          PRODUCTS = rows; TOTAL = total;
+          if (value == null && valueCache && valueCache.key === key) value = valueCache.value;
+          STOCK_VALUE = value;
+          if (value != null) valueCache = { key: key, value: value };
+          booted = true;
+          if (!HAS_ANY) show(qs('#prod-first')); else { show(qs('#prod-loaded')); render(); }
+          SM.icons();
+          if (value == null) {
+            fetchAll('cost,stock', false).then(function (a) {
+              if (token !== loadToken) return;
+              STOCK_VALUE = sumValue(a); valueCache = { key: key, value: STOCK_VALUE }; renderCount();
+            }).catch(function (e) { console.error(e); });
+          }
+          return true;
+        } catch (e) {
+          if (token === loadToken) {
+            if (!booted) { show(qs('#prod-error')); SM.icons(); }
+            if (!silent) SM.handleError(dbErr(e)); else console.error(e);
+          }
+          return false;
+        } finally {
+          if (token === loadToken) { grid.removeAttribute('aria-busy'); grid.style.opacity = ''; }
+        }
+      }
+
+      async function loadCategories() {
+        try {
+          var r = await db.from('products').select('category').neq('category', '').order('category').limit(1000);
+          if (r.error) throw r.error;
+          var seen = {}; r.data.forEach(function (x) { seen[x.category] = 1; });
+          var cats = Object.keys(seen).sort();
+          if (state.category !== 'all' && !seen[state.category]) state.category = 'all';
+          qs('#filter-category').innerHTML = '<option value="all">All categories</option>' +
+            cats.map(function (c) { return '<option value="' + esc(c) + '">' + esc(c) + '</option>'; }).join('');
+          qs('#filter-category').value = state.category;
+          qs('#category-list').innerHTML = cats.map(function (c) { return '<option value="' + esc(c) + '">'; }).join('');
+        } catch (e) { console.error(e); }
+      }
+
+      /* ---- debounced inline saves ---- */
+      function queueSave(p, key, value) {
+        (pending[p.id] = pending[p.id] || {})[key] = value;
+        setSave('dirty');
+        clearTimeout(saveT); saveT = setTimeout(flush, 500);
+      }
+      async function flush() {
+        if (flushing) return;
+        var batch = pending, ids = Object.keys(batch);
+        if (!ids.length) return;
+        pending = {}; flushing = true; setSave('saving');
+        var firstErr = null;
+        await Promise.all(ids.map(async function (id) {
+          try {
+            var r = await db.from('products').update(batch[id]).eq('id', id).select(COLUMNS).maybeSingle();
+            if (r.error) throw r.error;
+            if (!r.data) throw { userMessage: "Couldn't save: the product was removed or you don't have access." };
+            var p = byId(id);
+            if (p) Object.keys(r.data).forEach(function (k) { if (!(pending[id] && k in pending[id])) p[k] = r.data[k]; });
+          } catch (e) { firstErr = firstErr || dbErr(e); }
+        }));
+        flushing = false; valueCache = null;
+        var ok = true;
+        if (firstErr) { SM.handleError(firstErr); ok = await load(true); }
+        if (Object.keys(pending).length) { setSave('dirty'); flush(); }
+        else setSave(ok ? 'saved' : 'dirty');
+      }
+      window.addEventListener('beforeunload', function (e) {
+        if (flushing || Object.keys(pending).length) { e.preventDefault(); e.returnValue = ''; }
+      });
+
+      /* ---- bulk insert (paste / import): one batched insert ---- */
+      function mkRec(get) {
+        var name = get('name');
+        if (!name) return null;
+        return {
+          shop_id: SM.ctx.shop.id, sku: get('sku'), name: name, category: get('category'),
+          cost: money(get('cost')), price: money(get('price')),
+          stock: intv(get('stock')), reorder_level: intv(get('reorder_level')),
+          active: !/^(no|false|0|inactive)$/i.test(get('active'))
+        };
+      }
+      async function bulkInsert(recs, msg, btn) {
+        setSave('saving'); if (btn) SM.setLoading(btn, true, 'Importing…');
+        try {
+          var r = await db.from('products').insert(recs);
+          if (r.error) throw r.error;
+          valueCache = null; state.page = 1;
+          await load(); loadCategories();
+          SM.toast(msg + ' ' + recs.length + ' products', 'success');
+        } catch (e) {
+          e = dbErr(e);
+          if (e && e.code === '23505') e.userMessage = 'Nothing was added: one or more SKUs already exist.';
+          SM.handleError(e);
+        } finally {
+          setSave(Object.keys(pending).length ? 'dirty' : 'saved'); if (btn) SM.setLoading(btn, false);
+        }
+      }
+
+      /* ============ render ============ */
+      function renderHead() {
+        qs('#grid-head').innerHTML = '<tr><th class="rownum" aria-label="Row number"></th>' + COLS.map(function (c) {
+          var on = state.sortKey === c.key;
+          var icon = on ? (state.sortDir === 1 ? 'chevron-up' : 'chevron-down') : 'chevrons-up-down';
+          return '<th' + (c.num ? ' class="num"' : '') + ' aria-sort="' + (on ? (state.sortDir === 1 ? 'ascending' : 'descending') : 'none') + '">' +
+            '<button type="button" class="th-sort' + (on ? ' is-sorted' : '') + '" data-sort="' + c.key + '">' +
+            c.label + '<i data-lucide="' + icon + '"></i></button></th>';
+        }).join('') + '</tr>';
+      }
+      function cellHtml(p, c) {
+        if (c.type === 'bool') {
+          return '<td class="cell-active" data-key="active" data-field="active">' +
+            '<input type="checkbox" class="checkbox"' + (p.active ? ' checked' : '') + (READONLY ? ' disabled' : '') + ' aria-label="Active"></td>';
+        }
+        var cls = (c.num ? 'cell-num' : '') + (c.key === 'stock' && stockClass(p) ? ' ' + stockClass(p) : '');
+        return '<td class="' + cls + '" data-key="' + c.key + '" data-field="' + c.key + '">' + esc(String(p[c.key])) + '</td>';
+      }
+      function stockBadge(p) {
+        if (p.stock === 0) return '<span class="badge badge-danger"><span class="dot"></span>Out of stock</span>';
+        if (p.stock <= p.reorder_level) return '<span class="badge badge-warning"><span class="dot"></span>Low stock</span>';
+        return '<span class="badge badge-success"><span class="dot"></span>In stock</span>';
+      }
+      function render() {
+        var total = TOTAL;
+        var pages = Math.max(1, Math.ceil(total / state.pageSize));
+        if (state.page > pages) state.page = pages;
+        var start = (state.page - 1) * state.pageSize;
+        var view = PRODUCTS;
+
+        qs('#grid-area').hidden = !total;
+        qs('#grid-empty').hidden = !(HAS_ANY && total === 0);
+
+        renderHead();
+        qs('#grid-body').innerHTML = view.map(function (p, i) {
+          return '<tr data-id="' + p.id + '"><td class="rownum">' + (start + i + 1) + '</td>' +
+            COLS.map(function (c) { return cellHtml(p, c); }).join('') + '</tr>';
+        }).join('');
+
+        qs('#product-cards').innerHTML = view.map(function (p) {
+          return '<button type="button" class="pcard" data-id="' + p.id + '">' +
+            '<span class="pcard-top"><span class="pcard-name">' + esc(p.name) + '</span>' +
+            '<span class="pcard-price">' + fmt(p.price) + '</span></span>' +
+            '<span class="pcard-meta">' + esc(p.sku) + ' · ' + esc(p.category || 'No category') + '</span>' +
+            '<span class="pcard-foot">' + stockBadge(p) +
+            '<span class="pcard-stock">' + p.stock + ' in stock</span></span></button>';
+        }).join('');
+
+        renderCount();
+
+        qs('#page-info').textContent = total ? 'Showing ' + (start + 1) + '–' + Math.min(total, start + state.pageSize) + ' of ' + total : '';
+        qs('#page-prev').disabled = state.page <= 1;
+        qs('#page-next').disabled = state.page >= pages;
+        var btns = '';
+        for (var i = 1; i <= pages; i++) {
+          if (pages > 7 && i !== 1 && i !== pages && Math.abs(i - state.page) > 1) { if (i === 2 || i === pages - 1) btns += '<span class="text-3" aria-hidden="true">…</span>'; continue; }
+          btns += '<button type="button" class="page-btn"' + (i === state.page ? ' aria-current="page"' : '') + ' data-page="' + i + '">' + i + '</button>';
+        }
+        qs('#page-btns').innerHTML = btns;
+
+        SM.icons();
+      }
+
+      /* ============ grid interactions (self-contained; swap zone) ============ */
+      var gridBody = qs('#grid-body'), activeTd = null, editing = false;
+
+      function setActive(td) {
+        if (activeTd && activeTd !== td) activeTd.removeAttribute('aria-selected');
+        qsa('#grid-body tr.is-current').forEach(function (r) { r.classList.remove('is-current'); });
+        activeTd = td;
+        td.setAttribute('aria-selected', 'true');
+        td.closest('tr').classList.add('is-current');
+        td.focus();
+      }
+      function move(td, dRow, dCol) {
+        var row = td.parentElement, tds = qsa('td[data-key]', row), j = tds.indexOf(td);
+        if (dCol) {
+          var nj = j + dCol;
+          if (nj >= 0 && nj < tds.length) { setActive(tds[nj]); return true; }
+          var rows = qsa('#grid-body tr'), r = rows.indexOf(row) + (dCol > 0 ? 1 : -1);
+          if (r < 0 || r >= rows.length) return false;
+          var nr = qsa('td[data-key]', rows[r]);
+          setActive(nr[dCol > 0 ? 0 : nr.length - 1]);
+          return true;
+        }
+        var rows2 = qsa('#grid-body tr'), r2 = rows2.indexOf(row) + dRow;
+        if (r2 < 0 || r2 >= rows2.length) return false;
+        var nr2 = qsa('td[data-key]', rows2[r2]);
+        if (nr2[j]) setActive(nr2[j]);
+        return true;
+      }
+      function parseVal(col, v, old) {
+        v = (v == null ? '' : String(v)).trim();
+        if (col.type === 'text') {
+          if (v === '') return col.key === 'category' ? '' : old;
+          return v;
+        }
+        if (col.type === 'number') { var n = parseFloat(v); return isNaN(n) ? old : Math.max(0, n); }
+        var n2 = parseInt(v, 10);
+        return isNaN(n2) ? old : Math.max(0, Math.round(n2));
+      }
+      function paintCell(td, p, col) {
+        td.classList.remove('cell-low', 'cell-out');
+        if (col.key === 'stock') { var c = stockClass(p); if (c) td.classList.add(c); }
+        td.textContent = String(p[col.key] == null ? '' : p[col.key]);
+      }
+      function startEdit(td, ch) {
+        if (READONLY) return;
+        var tr = td.closest('tr'), p = byId(tr && tr.dataset.id);
+        var col = COL_MAP[td.dataset.key];
+        if (!p || !col || col.type === 'bool') return;
+        var old = p[col.key];
+        editing = true;
+        td.innerHTML = '<input class="cell-input" inputmode="' + (col.num ? 'decimal' : 'text') + '" aria-label="' + col.label + '">';
+        var input = td.querySelector('input');
+        input.value = ch != null ? ch : (old == null ? '' : String(old));
+        if (ch == null) input.select();
+        var done = false;
+        function finish(action) {
+          if (done) return;
+          done = true; editing = false;
+          if (action !== 'cancel') {
+            var nv = parseVal(col, input.value, old);
+            if (nv !== old) { p[col.key] = nv; queueSave(p, col.key, nv); }
+          }
+          paintCell(td, p, col);
+          if (action === 'down') { setActive(td); move(td, 1, 0); }
+          else if (action === 'right') { setActive(td); move(td, 0, 1); }
+          else setActive(td);
+        }
+        input.addEventListener('keydown', function (e) {
+          e.stopPropagation();
+          if (e.key === 'Enter') { e.preventDefault(); finish('down'); }
+          else if (e.key === 'Tab') { e.preventDefault(); finish('right'); }
+          else if (e.key === 'Escape') { e.preventDefault(); finish('cancel'); }
+        });
+        input.addEventListener('blur', function () { finish('none'); });
+        input.focus();
+        if (ch != null) input.setSelectionRange(input.value.length, input.value.length);
+      }
+      function toggleActive(td) {
+        if (READONLY) return;
+        var p = byId(td.closest('tr').dataset.id);
+        if (!p) return;
+        p.active = !p.active;
+        td.querySelector('input').checked = p.active;
+        queueSave(p, 'active', p.active);
+      }
+      function clearCell(td) {
+        if (READONLY) return;
+        var key = td.dataset.key, col = COL_MAP[key], p = byId(td.closest('tr').dataset.id);
+        if (!col || col.type === 'bool' || key === 'name' || key === 'sku') return;
+        p[key] = col.type === 'text' ? '' : 0;
+        paintCell(td, p, col);
+        queueSave(p, key, p[key]);
+      }
+
+      gridBody.addEventListener('click', function (e) {
+        var td = e.target.closest('td[data-key]');
+        if (!td) return;
+        if (e.target.type === 'checkbox') { setActive(td); toggleActive(td); return; }
+        setActive(td);
+      });
+      gridBody.addEventListener('dblclick', function (e) {
+        var td = e.target.closest('td[data-key]');
+        if (td && td.dataset.key !== 'active') { setActive(td); startEdit(td, null); }
+      });
+      gridBody.addEventListener('keydown', function (e) {
+        if (editing) return;
+        var td = e.target.closest ? e.target.closest('td[data-key]') : null;
+        if (!td) return;
+        var k = e.key;
+        if (k === 'Tab') { if (move(td, 0, e.shiftKey ? -1 : 1)) e.preventDefault(); return; }
+        if (k === 'ArrowDown') { e.preventDefault(); move(td, 1, 0); return; }
+        if (k === 'ArrowUp') { e.preventDefault(); move(td, -1, 0); return; }
+        if (k === 'ArrowLeft') { e.preventDefault(); move(td, 0, -1); return; }
+        if (k === 'ArrowRight') { e.preventDefault(); move(td, 0, 1); return; }
+        if (k === 'Enter' || k === 'F2') { e.preventDefault(); startEdit(td, null); return; }
+        if ((k === 'Delete' || k === 'Backspace') && td.dataset.key !== 'active') { e.preventDefault(); clearCell(td); return; }
+        if (k === ' ' && td.dataset.key === 'active') { e.preventDefault(); toggleActive(td); return; }
+        if (k.length === 1 && !e.ctrlKey && !e.metaKey && td.dataset.key !== 'active') {
+          e.preventDefault(); startEdit(td, k);
+        }
+      });
+
+      /* paste from Excel: TSV rows become new products (one batched insert) */
+      qs('#grid-root').addEventListener('paste', function (e) {
+        if (editing || READONLY) return;
+        var text = e.clipboardData && e.clipboardData.getData('text/plain');
+        if (!text) return;
+        var rows = text.replace(/\r/g, '').split('\n').filter(function (r) { return r.trim() !== ''; })
+          .map(function (r) { return r.split('\t'); });
+        if (rows.length < 1 || (rows.length === 1 && rows[0].length < 2)) return; /* single value: native behavior */
+        e.preventDefault();
+        var recs = rows.slice(0, 500).map(function (cells) {
+          return mkRec(function (k) { return (cells[KEYS.indexOf(k)] || '').trim(); });
+        }).filter(Boolean);
+        if (recs.length) bulkInsert(recs, 'Pasted');
+      });
+
+      /* ============ toolbar ============ */
+      qs('#search').addEventListener('input', SM.debounce(function () {
+        state.search = qs('#search').value.trim(); state.page = 1; load();
+      }, 200));
+      qs('#filter-category').addEventListener('change', function () {
+        state.category = this.value; state.page = 1; load();
+      });
+      qsa('.chip').forEach(function (chip) {
+        chip.addEventListener('click', function () {
+          state.chip = chip.dataset.chip; state.page = 1;
+          qsa('.chip').forEach(function (c) { c.classList.toggle('is-selected', c === chip); });
+          load();
+        });
+      });
+      qs('#grid-head').addEventListener('click', function (e) {
+        var btn = e.target.closest('.th-sort');
+        if (!btn) return;
+        var key = btn.dataset.sort;
+        if (state.sortKey === key) state.sortDir *= -1;
+        else { state.sortKey = key; state.sortDir = 1; }
+        state.page = 1; load();
+      });
+      qs('#page-btns').addEventListener('click', function (e) {
+        var b = e.target.closest('[data-page]');
+        if (b) { state.page = +b.dataset.page; load(); }
+      });
+      qs('#page-prev').addEventListener('click', function () { if (state.page > 1) { state.page--; load(); } });
+      qs('#page-next').addEventListener('click', function () { state.page++; load(); });
+      qs('#clear-filters').addEventListener('click', function () {
+        state.search = ''; state.category = 'all'; state.chip = 'all'; state.page = 1;
+        qs('#search').value = ''; qs('#filter-category').value = 'all';
+        qsa('.chip').forEach(function (c) { c.classList.toggle('is-selected', c.dataset.chip === 'all'); });
+        load();
+      });
+
+      /* ============ import / export ============ */
+      function csvCell(v) { v = String(v == null ? '' : v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }
+      qs('#export-btn').addEventListener('click', async function () {
+        var btn = this;
+        SM.setLoading(btn, true, 'Exporting…');
+        try {
+          var list = await fetchAll(COLUMNS, true);
+          if (state.chip === 'low') list = list.filter(isLow);
+          var head = 'sku,name,category,cost,price,stock,reorder_level,active';
+          var lines = list.map(function (p) {
+            return [p.sku, p.name, p.category, p.cost, p.price, p.stock, p.reorder_level, p.active].map(csvCell).join(',');
+          });
+          var blob = new Blob([head + '\n' + lines.join('\n')], { type: 'text/csv' });
+          var a = document.createElement('a');
+          a.href = URL.createObjectURL(blob);
+          a.download = 'products-' + new Date().toISOString().slice(0, 10) + '.csv';
+          document.body.appendChild(a); a.click(); a.remove();
+          setTimeout(function () { URL.revokeObjectURL(a.href); }, 500);
+          SM.toast('Products exported', 'success');
+        } catch (e) { SM.handleError(e); }
+        finally { SM.setLoading(btn, false); }
+      });
+
+      function parseCsv(text) {
+        var lines = text.replace(/\r/g, '').split('\n').filter(function (l) { return l.trim() !== ''; });
+        return lines.map(function (l) {
+          var cells = [], cur = '', q = false;
+          for (var i = 0; i < l.length; i++) {
+            var ch = l[i];
+            if (q) { if (ch === '"') { if (l[i + 1] === '"') { cur += '"'; i++; } else q = false; } else cur += ch; }
+            else if (ch === '"') q = true;
+            else if (ch === ',') { cells.push(cur); cur = ''; }
+            else cur += ch;
+          }
+          cells.push(cur);
+          return cells;
+        });
+      }
+      qs('#import-btn').addEventListener('click', function () { qs('#import-file').click(); });
+      qs('#import-file').addEventListener('change', function () {
+        var file = this.files[0]; this.value = '';
+        if (!file || READONLY) return;
+        var reader = new FileReader();
+        reader.onerror = function () { SM.toast('Import failed: file could not be read', 'error'); };
+        reader.onload = function () {
+          var rows = parseCsv(String(reader.result)), map = null;
+          if (rows.length) {
+            var head = rows[0].map(function (h) { return h.trim().toLowerCase(); });
+            if (head.indexOf('name') > -1 || head.indexOf('sku') > -1) {
+              map = {}; KEYS.forEach(function (k) { map[k] = head.indexOf(k); });
+              if (map.stock < 0) map.stock = head.indexOf('in stock');
+              if (map.reorder_level < 0) map.reorder_level = head.indexOf('reorder');
+              rows = rows.slice(1);
+            }
+          }
+          var recs = rows.slice(0, 500).map(function (cells) {
+            return mkRec(function (k) {
+              var i = map ? map[k] : KEYS.indexOf(k);
+              return i > -1 ? (cells[i] || '').trim() : '';
+            });
+          }).filter(Boolean);
+          if (!recs.length) { SM.toast('Import failed: no valid rows found', 'error'); return; }
+          bulkInsert(recs, 'Imported', qs('#import-btn'));
+        };
+        reader.readAsText(file);
+      });
+
+      /* ============ add / edit modal ============ */
+      var editId = null;
+      function openAdd() {
+        if (READONLY) return;
+        editId = null;
+        qs('#product-modal-title').textContent = 'Add product';
+        qs('#product-form').reset(); /* blank SKU = generated by the database */
+        SM.clearFieldError(qs('#f-name'));
+        SM.openModal(qs('#product-modal'));
+      }
+      function openEdit(p) {
+        if (READONLY || !p) return;
+        editId = p.id;
+        qs('#product-modal-title').textContent = 'Edit product';
+        qs('#f-sku').value = p.sku; qs('#f-name').value = p.name;
+        qs('#f-category').value = p.category; qs('#f-cost').value = p.cost;
+        qs('#f-price').value = p.price; qs('#f-stock').value = p.stock;
+        qs('#f-reorder').value = p.reorder_level; qs('#f-active').checked = p.active;
+        SM.clearFieldError(qs('#f-name'));
+        SM.openModal(qs('#product-modal'));
+      }
+      qs('#add-btn').addEventListener('click', openAdd);
+      qs('#first-add-btn').addEventListener('click', openAdd);
+      qs('#product-cards').addEventListener('click', function (e) {
+        var card = e.target.closest('.pcard');
+        if (card) openEdit(byId(card.dataset.id));
+      });
+      qs('#product-form').addEventListener('submit', async function (e) {
+        e.preventDefault();
+        var name = qs('#f-name').value.trim();
+        if (!name) { SM.setFieldError(qs('#f-name'), 'Name is required.'); qs('#f-name').focus(); return; }
+        SM.clearFieldError(qs('#f-name'));
+        var data = {
+          sku: qs('#f-sku').value.trim(), name: name, category: qs('#f-category').value.trim(),
+          cost: money(qs('#f-cost').value), price: money(qs('#f-price').value),
+          stock: intv(qs('#f-stock').value), reorder_level: intv(qs('#f-reorder').value),
+          active: qs('#f-active').checked
+        };
+        var btn = qs('#save-product-btn');
+        SM.setLoading(btn, true, 'Saving…');
+        try {
+          var r;
+          if (editId) {
+            if (!data.sku) delete data.sku; /* the DB only auto-fills SKU on insert */
+            delete pending[editId];
+            r = await db.from('products').update(data).eq('id', editId).select('id').maybeSingle();
+            if (!r.error && !r.data) throw { userMessage: "Couldn't save: the product was removed or you don't have access." };
+          } else {
+            data.shop_id = SM.ctx.shop.id;
+            r = await db.from('products').insert(data).select('id').single();
+          }
+          if (r.error) throw r.error;
+          valueCache = null;
+          SM.closeModal(qs('#product-modal'));
+          await load(); loadCategories();
+          SM.toast('Product saved', 'success');
+        } catch (err) { SM.handleError(dbErr(err)); }
+        finally { SM.setLoading(btn, false); }
+      });
+
+      /* ============ boot ============ */
+      (async function init() {
+        SM.initShell();
+        qsa('.chip').forEach(function (c) { c.classList.toggle('is-selected', c.dataset.chip === state.chip); });
+        setSave('saved');
+        try {
+          if (!(await SM.requireAuth())) return;
+          await SM.loadContext();
+          READONLY = !SM.isManager();
+          if (READONLY) ['#add-btn', '#first-add-btn', '#import-btn', '.toolbar-hint'].forEach(function (sel) {
+            var el = qs(sel); if (el) el.style.display = 'none';
+          });
+          await Promise.all([loadCategories(), load()]);
+        } catch (e) {
+          SM.handleError(e); show(qs('#prod-error')); SM.icons();
+        }
+      })();
+    })();
+  </script>
+</body>
+</html>

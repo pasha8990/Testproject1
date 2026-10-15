@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Purchases · Shop Manager</title>
+  <script>
+    (function () {
+      try {
+        var t = localStorage.getItem('sm-theme') ||
+          (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+        document.documentElement.setAttribute('data-theme', t);
+      } catch (e) {}
+    })();
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/lucide@0.294.0"></script>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body data-nav="purchases">
+
+  <!-- ===== Shared shell ===== -->
+  <div class="sidebar-overlay" id="sidebar-overlay"></div>
+  <aside class="sidebar" id="sidebar" aria-label="Main navigation">
+    <div class="sidebar-header">
+      <a class="brand" href="dashboard.html"><span class="brand-mark"><i data-lucide="store"></i></span>Shop Manager</a>
+    </div>
+    <nav class="sidebar-nav">
+      <a class="nav-link" data-nav="dashboard" href="dashboard.html"><i data-lucide="layout-dashboard"></i>Dashboard</a>
+      <a class="nav-link" data-nav="products" href="products.html"><i data-lucide="package"></i>Products</a>
+      <a class="nav-link" data-nav="orders" href="orders.html"><i data-lucide="shopping-cart"></i>Orders</a>
+      <a class="nav-link" data-nav="customers" href="customers.html"><i data-lucide="users"></i>Customers</a>
+      <a class="nav-link" data-nav="suppliers" href="suppliers.html"><i data-lucide="truck"></i>Suppliers</a>
+      <a class="nav-link" data-nav="purchases" href="purchases.html"><i data-lucide="clipboard-list"></i>Purchases</a>
+      <a class="nav-link" data-nav="expenses" href="expenses.html"><i data-lucide="wallet"></i>Expenses</a>
+      <a class="nav-link" data-nav="reports" href="reports.html"><i data-lucide="bar-chart-3"></i>Reports</a>
+      <a class="nav-link" data-nav="settings" href="settings.html"><i data-lucide="settings"></i>Settings</a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-row">
+        <span class="avatar">MC</span>
+        <span class="user-meta"><span class="user-name">Maya Chen</span><span class="user-role">Manager</span></span>
+      </div>
+      <div class="sidebar-footer-row">
+        <span class="text-3" style="font-size:12px;">Northwind Supply Co.</span>
+        <button type="button" class="btn btn-ghost btn-icon btn-sm" data-theme-toggle aria-label="Toggle theme">
+          <i data-lucide="sun" class="i-sun is-hidden"></i><i data-lucide="moon" class="i-moon"></i>
+        </button>
+      </div>
+    </div>
+  </aside>
+  <header class="topbar">
+    <button type="button" class="btn btn-ghost btn-icon" id="nav-toggle" aria-label="Open menu" aria-expanded="false" aria-controls="sidebar">
+      <i data-lucide="menu"></i>
+    </button>
+    <a class="brand" href="dashboard.html"><span class="brand-mark"><i data-lucide="store"></i></span><span class="topbar-title">Shop Manager</span></a>
+    <span class="spacer"></span>
+    <button type="button" class="btn btn-ghost btn-icon" data-theme-toggle aria-label="Toggle theme">
+      <i data-lucide="sun" class="i-sun is-hidden"></i><i data-lucide="moon" class="i-moon"></i>
+    </button>
+  </header>
+  <!-- ===== End shared shell ===== -->
+
+  <main class="main">
+    <!-- skeleton -->
+    <div id="po-skeleton" aria-hidden="true">
+      <div class="page-header"><div class="skeleton sk-line" style="width:140px;height:20px"></div><div class="skeleton sk-line" style="width:160px;height:44px"></div></div>
+      <div class="skeleton sk-line" style="width:300px;height:40px;margin-bottom:16px"></div>
+      <div class="card"><div class="card-body"><div class="skeleton sk-line" style="width:35%"></div><div class="skeleton sk-block" style="height:240px;margin-top:12px"></div></div></div>
+    </div>
+
+    <!-- error (purchases.html?state=error) -->
+    <div class="card" id="po-error" hidden>
+      <div class="error-state">
+        <div class="empty-icon"><i data-lucide="cloud-off"></i></div>
+        <h1 class="empty-title">Couldn't load purchases</h1>
+        <p class="empty-desc">We couldn't reach the server. Check your connection and try again.</p>
+        <button type="button" class="btn btn-primary" onclick="window.location.reload()">Try again</button>
+      </div>
+    </div>
+
+    <!-- empty (purchases.html?state=empty) -->
+    <div class="card" id="po-empty" hidden>
+      <div class="empty-state">
+        <div class="empty-icon"><i data-lucide="clipboard-list"></i></div>
+        <h1 class="empty-title">No purchases yet</h1>
+        <p class="empty-desc">Create a purchase order when you buy stock. Receiving it will update your inventory.</p>
+        <button type="button" class="btn btn-primary" id="empty-new-btn"><i data-lucide="plus"></i>New purchase</button>
+      </div>
+    </div>
+
+    <!-- loaded -->
+    <div id="po-loaded" hidden>
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">Purchases</h1>
+          <p class="page-sub">Buying stock from your suppliers.</p>
+        </div>
+        <div class="page-actions">
+          <button type="button" class="btn btn-primary" id="new-btn"><i data-lucide="plus"></i>New purchase</button>
+        </div>
+      </div>
+
+      <div class="tabs" id="tabs" role="group" aria-label="Filter by status"></div>
+
+      <div class="table-toolbar">
+        <div class="search-box">
+          <i data-lucide="search"></i>
+          <input class="input" type="search" id="search" placeholder="Search PO number or supplier" aria-label="Search purchases">
+        </div>
+      </div>
+
+      <div class="table-wrap" id="po-table-card">
+        <table class="table table-responsive">
+          <thead>
+            <tr>
+              <th><button type="button" class="th-sort" data-sort="number">PO number<i data-lucide="chevrons-up-down"></i></button></th>
+              <th><button type="button" class="th-sort" data-sort="supplier">Supplier<i data-lucide="chevrons-up-down"></i></button></th>
+              <th><button type="button" class="th-sort" data-sort="created_at">Date<i data-lucide="chevrons-up-down"></i></button></th>
+              <th class="num">Items</th>
+              <th class="num"><button type="button" class="th-sort" data-sort="total">Total cost<i data-lucide="chevrons-up-down"></i></button></th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="po-body"></tbody>
+        </table>
+      </div>
+
+      <div class="card" id="po-noresults" hidden>
+        <div class="empty-state">
+          <div class="empty-icon"><i data-lucide="search-x"></i></div>
+          <h2 class="empty-title">No purchases match</h2>
+          <p class="empty-desc">Try a different tab or search term.</p>
+          <button type="button" class="btn btn-secondary" id="clear-filters">Clear filters</button>
+        </div>
+      </div>
+
+      <div class="pagination" id="pager">
+        <span id="page-info"></span>
+        <span class="pages">
+          <button type="button" class="page-btn" id="page-prev" aria-label="Previous page"><i data-lucide="chevron-left"></i></button>
+          <span id="page-btns" style="display:inline-flex;gap:4px;"></span>
+          <button type="button" class="page-btn" id="page-next" aria-label="Next page"><i data-lucide="chevron-right"></i></button>
+        </span>
+      </div>
+    </div>
+  </main>
+
+  <!-- ===== Purchase detail drawer ===== -->
+  <div class="overlay overlay--right" id="drawer-overlay" hidden>
+    <aside class="drawer" role="dialog" aria-modal="true" aria-labelledby="drawer-title">
+      <div class="drawer-header">
+        <h2 class="drawer-title" id="drawer-title">Purchase</h2>
+        <button type="button" class="btn btn-ghost btn-icon btn-sm" data-layer-close aria-label="Close"><i data-lucide="x"></i></button>
+      </div>
+      <div class="drawer-body" id="drawer-body"></div>
+      <div class="drawer-footer" id="drawer-footer"></div>
+    </aside>
+  </div>
+
+  <!-- ===== New purchase modal ===== -->
+  <div class="overlay" id="newpo-overlay" hidden>
+    <div class="modal modal--wide" role="dialog" aria-modal="true" aria-labelledby="newpo-title">
+      <div class="sheet-handle" aria-hidden="true"></div>
+      <div class="modal-header">
+        <h2 class="modal-title" id="newpo-title">New purchase</h2>
+        <button type="button" class="btn btn-ghost btn-icon btn-sm" data-layer-close aria-label="Close"><i data-lucide="x"></i></button>
+      </div>
+      <div class="modal-body">
+        <div class="field">
+          <span class="label" id="supplier-label">Supplier</span>
+          <div class="customer-box">
+            <button type="button" class="customer-btn" id="suppick-btn" data-field="supplier"
+                    aria-haspopup="listbox" aria-expanded="false" aria-describedby="suppick-error" data-autofocus>
+              <i data-lucide="truck"></i>
+              <span class="c-name" id="suppick-name">Select supplier</span>
+              <i data-lucide="chevron-down" class="chev"></i>
+            </button>
+            <div class="customer-pop" id="suppick-pop" hidden>
+              <div class="customer-search">
+                <i data-lucide="search"></i>
+                <input class="input" type="search" id="suppick-search" placeholder="Search suppliers" aria-label="Search suppliers">
+              </div>
+              <div class="cust-list" id="suppick-list"></div>
+            </div>
+          </div>
+          <p class="pick-error" id="suppick-error" hidden></p>
+        </div>
+
+        <span class="summary-section">Items</span>
+        <div id="grid-root">
+          <div class="lines-head" aria-hidden="true">
+            <span>#</span><span>Product</span><span>Qty</span><span>Unit cost</span><span class="num">Total</span><span></span>
+          </div>
+          <div id="po-lines-body"></div>
+          <div class="lines-meta"><span id="po-lines-count"></span><span id="po-lines-units"></span></div>
+        </div>
+      </div>
+      <div class="modal-total"><span>Total cost</span><strong id="po-total">$0.00</strong></div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-layer-close>Cancel</button>
+        <button type="button" class="btn btn-primary" id="save-po-btn">Save purchase</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== Quick add supplier (stacked over new purchase) ===== -->
+  <div class="overlay" id="quicksup-overlay" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="quicksup-title">
+      <div class="sheet-handle" aria-hidden="true"></div>
+      <div class="modal-header">
+        <h2 class="modal-title" id="quicksup-title">Add supplier</h2>
+        <button type="button" class="btn btn-ghost btn-icon btn-sm" data-layer-close aria-label="Close"><i data-lucide="x"></i></button>
+      </div>
+      <form id="quicksup-form" novalidate>
+        <div class="modal-body">
+          <div class="field">
+            <label class="label" for="q-name">Name</label>
+            <input class="input" id="q-name" data-field="name" data-autofocus placeholder="e.g. Roasters United" aria-describedby="q-name-error" required>
+            <p class="field-error" id="q-name-error" hidden></p>
+          </div>
+          <div class="field">
+            <label class="label" for="q-email">Email</label>
+            <input class="input" type="email" id="q-email" data-field="email" placeholder="optional">
+          </div>
+          <div class="field">
+            <label class="label" for="q-phone">Phone</label>
+            <input class="input" id="q-phone" data-field="phone" placeholder="optional">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-layer-close>Cancel</button>
+          <button type="submit" class="btn btn-primary">Add supplier</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ===== Receive goods confirmation ===== -->
+  <div class="overlay" id="recv-overlay" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="recv-title">
+      <div class="sheet-handle" aria-hidden="true"></div>
+      <div class="modal-header">
+        <h2 class="modal-title" id="recv-title">Receive goods</h2>
+        <button type="button" class="btn btn-ghost btn-icon btn-sm" data-layer-close aria-label="Close"><i data-lucide="x"></i></button>
+      </div>
+      <div class="modal-body">
+        <p class="muted">Purchase <strong class="tnum" id="recv-po"></strong> · <span id="recv-supplier"></span></p>
+        <div class="receive-list" id="recv-list"></div>
+        <p class="muted mt-16" id="recv-note"></p>
+        <div class="alert alert-info mt-8">
+          <i data-lucide="info"></i>
+          <div>Stock levels will increase immediately. You can review every change later in <a href="inventory.html">Inventory → Movements</a>.</div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-layer-close>Back</button>
+        <button type="button" class="btn btn-primary" id="recv-confirm"><i data-lucide="package-check"></i>Receive goods</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== Cancel purchase confirmation ===== -->
+  <div class="overlay" id="pocancel-overlay" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="pocancel-title">
+      <div class="sheet-handle" aria-hidden="true"></div>
+      <div class="modal-header">
+        <h2 class="modal-title" id="pocancel-title">Cancel purchase</h2>
+        <button type="button" class="btn btn-ghost btn-icon btn-sm" data-layer-close aria-label="Close"><i data-lucide="x"></i></button>
+      </div>
+      <div class="modal-body">
+        <p class="muted">Cancel purchase <strong class="tnum" id="pocancel-number"></strong>? Ordered goods won't be received and stock won't change.</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-layer-close>Keep purchase</button>
+        <button type="button" class="btn btn-danger" id="pocancel-confirm">Cancel purchase</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.4"></script>
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+  <script>
+    (function () {
+      "use strict";
+      var qs = SM.qs, qsa = SM.qsa, fmt = SM.formatMoney, esc = SM.escapeHtml;
+      var db = SM.db, state = { tab: "ordered", search: "", sortKey: "created_at", sortDir: -1, page: 1, pageSize: 8 };
+      var current = null, po = { supplier: null, rows: [] }, poRowSeq = 0;
+      var poBody = qs("#po-lines-body"), params = new URLSearchParams(window.location.search);
+      var counts = { ordered: 0, received: 0, cancelled: 0 }, suppliers = [], products = [];
+      var listRequest = 0, supplierRequest = 0, productRequest = 0;
+
+      function show(el) {
+        [qs("#po-skeleton"), qs("#po-loaded"), qs("#po-empty"), qs("#po-error")].forEach(function (x) { x.hidden = x !== el; });
+      }
+      function rpcError(e) { SM.handleError(e); }
+      function fmtDateTime(iso) {
+        var d = new Date(iso);
+        return d.toLocaleDateString("en-US", { month: "short", day: "numeric" }) +
+          ' <span class="cell-muted">· ' + d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }) + "</span>";
+      }
+      function unitsOf(p) { return (p.items || []).reduce(function (s, it) { return s + Number(it.qty || 0); }, 0); }
+      function byNumber(n) { return db.from("purchase_orders").select("id,number,supplier_id,supplier_name,status,total,notes,created_at,received_at,cancelled_at").eq("number", n).maybeSingle(); }
+
+      async function loadCounts() {
+        var statuses = ["ordered", "received", "cancelled"];
+        var results = await Promise.all(statuses.map(function (s) {
+          return db.from("purchase_orders").select("id", { count: "exact", head: true }).eq("status", s);
+        }));
+        results.forEach(function (r, i) { if (r.error) throw r.error; counts[statuses[i]] = r.count || 0; });
+      }
+      function renderTabs() {
+        var defs = [["ordered", "Ordered"], ["received", "Received"], ["cancelled", "Cancelled"]];
+        qs("#tabs").innerHTML = defs.map(function (d) {
+          return '<button type="button" class="tab' + (state.tab === d[0] ? " is-active" : "") + '"' +
+            (state.tab === d[0] ? ' aria-current="true"' : "") + ' data-tab="' + d[0] + '">' +
+            d[1] + '<span class="tab-count">' + counts[d[0]] + "</span></button>";
+        }).join("");
+      }
+      function renderTable(rows, total) {
+        var pages = Math.max(1, Math.ceil(total / state.pageSize));
+        if (state.page > pages) state.page = pages;
+        qs("#po-table-card").hidden = total === 0;
+        qs("#po-noresults").hidden = !(total === 0 && (state.search || counts[state.tab] > 0));
+        qs("#pager").hidden = total === 0;
+        qsa("#po-table-card .th-sort").forEach(function (b) {
+          var on = b.dataset.sort === state.sortKey;
+          b.classList.toggle("is-sorted", on);
+          b.innerHTML = b.childNodes[0].textContent + '<i data-lucide="' + (on ? (state.sortDir === 1 ? "chevron-up" : "chevron-down") : "chevrons-up-down") + '"></i>';
+        });
+        qs("#po-body").innerHTML = rows.map(function (p) {
+          return '<tr class="is-clickable" data-id="' + esc(p.id) + '" data-number="' + esc(p.number) + '" tabindex="0">' +
+            '<td data-label="PO number"><span class="cell-strong tnum">' + esc(p.number) + "</span></td>" +
+            '<td data-label="Supplier" data-field="supplier">' + esc(p.supplier_name || "—") + "</td>" +
+            '<td data-label="Date">' + fmtDateTime(p.created_at) + "</td>" +
+            '<td data-label="Items" class="num">' + Number(p.item_count || 0) + "</td>" +
+            '<td data-label="Total cost" class="num cell-strong">' + fmt(p.total) + "</td>" +
+            '<td data-label="Status">' + SM.badge(p.status) + "</td></tr>";
+        }).join("");
+        var start = total ? (state.page - 1) * state.pageSize : 0;
+        qs("#page-info").textContent = total ? "Showing " + (start + 1) + "–" + Math.min(total, start + rows.length) + " of " + total : "";
+        qs("#page-prev").disabled = state.page <= 1;
+        qs("#page-next").disabled = state.page >= pages;
+        var btns = "";
+        for (var i = 1; i <= pages; i++) btns += '<button type="button" class="page-btn"' + (i === state.page ? ' aria-current="page"' : "") + ' data-page="' + i + '">' + i + "</button>";
+        qs("#page-btns").innerHTML = btns;
+        SM.icons();
+      }
+      async function loadList() {
+        var request = ++listRequest;
+        try {
+          var query = db.from("purchase_orders").select("id,number,supplier_id,supplier_name,status,total,created_at", { count: "exact" }).eq("status", state.tab);
+          if (state.search) query = query.or("number.ilike.%" + state.search.replace(/[,%()]/g, " ") + "%,supplier_name.ilike.%" + state.search.replace(/[,%()]/g, " ") + "%");
+          var sortCol = state.sortKey === "supplier" ? "supplier_name" : state.sortKey;
+          query = query.order(sortCol, { ascending: state.sortDir === 1, nullsFirst: false })
+            .range((state.page - 1) * state.pageSize, state.page * state.pageSize - 1);
+          var res = await query;
+          if (res.error) throw res.error;
+          if (request !== listRequest) return;
+          var rows = res.data || [];
+          if (rows.length) {
+            var ids = rows.map(function (x) { return x.id; });
+            var ir = await db.from("purchase_order_items").select("purchase_order_id").in("purchase_order_id", ids);
+            if (ir.error) throw ir.error;
+            var countsById = {};
+            (ir.data || []).forEach(function (x) { countsById[x.purchase_order_id] = (countsById[x.purchase_order_id] || 0) + 1; });
+            rows.forEach(function (x) { x.item_count = countsById[x.id] || 0; });
+          }
+          renderTabs(); renderTable(rows, res.count || 0);
+          show((counts.ordered + counts.received + counts.cancelled) === 0 ? qs("#po-empty") : qs("#po-loaded"));
+        } catch (e) {
+          if (request !== listRequest) return;
+          rpcError(e); show(qs("#po-error")); SM.icons();
+        }
+      }
+      async function refresh() {
+        try { await loadCounts(); await loadList(); }
+        catch (e) { rpcError(e); show(qs("#po-error")); }
+      }
+
+      async function openDrawerFor(row) {
+        try {
+          var detail = await db.from("purchase_orders").select("id,number,supplier_id,supplier_name,status,total,notes,created_at,received_at,cancelled_at").eq("id", row.id).single();
+          if (detail.error) throw detail.error;
+          var o = detail.data;
+          var itemsRes = await db.from("purchase_order_items").select("id,product_id,product_name,qty,unit_cost,line_total").eq("purchase_order_id", o.id).order("product_name");
+          if (itemsRes.error) throw itemsRes.error;
+          o.items = itemsRes.data || [];
+          var supplier = null;
+          if (o.supplier_id) {
+            var sr = await db.from("suppliers").select("name,email,phone").eq("id", o.supplier_id).maybeSingle();
+            if (sr.error) throw sr.error; supplier = sr.data;
+          }
+          current = o;
+          renderDrawer(supplier);
+          SM.openDrawer(qs(".drawer", qs("#drawer-overlay")));
+        } catch (e) { rpcError(e); }
+      }
+      function renderDrawer(s) {
+        var o = current;
+        qs("#drawer-title").textContent = "Purchase " + o.number;
+        qs("#drawer-body").innerHTML =
+          '<div class="drawer-meta">' +
+            '<div><span class="meta-label">Supplier</span><span class="meta-value">' + esc(o.supplier_name || "—") + "</span></div>" +
+            '<div><span class="meta-label">Date</span><span class="meta-value">' + new Date(o.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) +
+              ' <span class="cell-muted">· ' + new Date(o.created_at).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }) + "</span></span></div>" +
+            '<div><span class="meta-label">Status</span><span class="meta-value">' + SM.badge(o.status) + "</span></div>" +
+            '<div><span class="meta-label">Units</span><span class="meta-value">' + unitsOf(o) + "</span></div>" +
+            '<div class="meta-full"><span class="meta-label">Contact</span><span class="meta-value">' +
+              (s ? esc(s.email || "") + ' <span class="cell-muted">· ' + esc(s.phone || "") + "</span>" : '<span class="cell-muted">No contact on file</span>') + "</span></div>" +
+          "</div>" + '<div class="table-wrap"><table class="table items-table"><thead><tr><th>Product</th><th class="num">Qty</th><th class="num">Unit cost</th><th class="num">Total</th></tr></thead><tbody>' +
+          o.items.map(function (it) { return "<tr><td data-field=\"product\">" + esc(it.product_name) + '</td><td class="num" data-field="qty">' + it.qty +
+            '</td><td class="num" data-field="unit_cost">' + fmt(it.unit_cost) + '</td><td class="num cell-strong">' + fmt(it.line_total) + "</td></tr>"; }).join("") +
+          '</tbody></table></div><div class="totals"><div class="totals-row"><span>Items</span><span>' + o.items.length +
+          '</span></div><div class="totals-row is-total"><span>Total cost</span><span>' + fmt(o.total) + "</span></div></div>";
+        var footer = qs("#drawer-footer");
+        if (o.status === "ordered" && SM.isManager()) {
+          footer.hidden = false;
+          footer.innerHTML = '<button type="button" class="btn btn-primary" data-action="receive"><i data-lucide="package-check"></i>Receive goods</button><button type="button" class="btn btn-danger-secondary" data-action="cancel"><i data-lucide="ban"></i>Cancel purchase</button>';
+        } else {
+          footer.hidden = false;
+          footer.innerHTML = o.status === "received" ? '<span class="drawer-note">Goods received — stock was updated.</span>' :
+            (o.status === "cancelled" ? '<span class="drawer-note">This purchase was cancelled.</span>' : "");
+        }
+        SM.icons();
+      }
+      qs("#drawer-footer").addEventListener("click", function (e) {
+        var btn = e.target.closest("[data-action]"); if (!btn || !current) return;
+        if (btn.dataset.action === "receive") openReceive();
+        else if (btn.dataset.action === "cancel") { qs("#pocancel-number").textContent = current.number; SM.openModal(qs("#pocancel-overlay .modal")); }
+      });
+
+      function openReceive() {
+        var o = current;
+        qs("#recv-po").textContent = o.number; qs("#recv-supplier").textContent = o.supplier_name || "—";
+        qs("#recv-list").innerHTML = o.items.map(function (it) { return '<div class="receive-line"><span>' + esc(it.product_name) + '</span><span class="delta-up">+' + it.qty + "</span></div>"; }).join("");
+        qs("#recv-note").textContent = "Receiving adds " + unitsOf(o) + " units across " + o.items.length + (o.items.length === 1 ? " product" : " products") + " to your stock.";
+        SM.openModal(qs("#recv-overlay .modal"));
+      }
+      qs("#recv-confirm").addEventListener("click", async function () {
+        var btn = this; if (!current) return;
+        SM.setLoading(btn, true, "Receiving…");
+        try {
+          var r = await db.rpc("receive_purchase_order", { p_po_id: current.id });
+          if (r.error) throw r.error;
+          SM.closeModal(qs("#recv-overlay .modal"));
+          SM.closeDrawer(qs(".drawer", qs("#drawer-overlay")));
+          SM.toast("Goods received — stock updated", "success");
+          await refresh();
+          var fresh = await db.from("purchase_orders").select("id,number").eq("id", current.id).maybeSingle();
+          if (fresh.data) await openDrawerFor(fresh.data);
+        } catch (e) { rpcError(e); }
+        finally { SM.setLoading(btn, false); }
+      });
+      qs("#pocancel-confirm").addEventListener("click", async function () {
+        var btn = this; if (!current) return;
+        SM.setLoading(btn, true, "Cancelling…");
+        try {
+          var r = await db.rpc("cancel_purchase_order", { p_po_id: current.id });
+          if (r.error) throw r.error;
+          SM.closeModal(qs("#pocancel-overlay .modal"));
+          SM.closeDrawer(qs(".drawer", qs("#drawer-overlay")));
+          SM.toast("Purchase cancelled", "success");
+          await refresh();
+        } catch (e) { rpcError(e); }
+        finally { SM.setLoading(btn, false); }
+      });
+
+      qs("#po-body").addEventListener("click", function (e) {
+        var tr = e.target.closest("tr[data-id]"); if (tr) openDrawerFor({ id: tr.dataset.id });
+      });
+      qs("#po-body").addEventListener("keydown", function (e) {
+        var tr = e.target.closest("tr[data-id]"); if (tr && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); openDrawerFor({ id: tr.dataset.id }); }
+      });
+      qs("#po-table-card").addEventListener("click", function (e) {
+        var b = e.target.closest(".th-sort"); if (!b) return;
+        var key = b.dataset.sort;
+        if (state.sortKey === key) state.sortDir *= -1;
+        else { state.sortKey = key; state.sortDir = key === "created_at" ? -1 : 1; }
+        state.page = 1; loadList();
+      });
+      qs("#tabs").addEventListener("click", function (e) {
+        var t = e.target.closest("[data-tab]"); if (t) { state.tab = t.dataset.tab; state.page = 1; loadList(); }
+      });
+      qs("#search").addEventListener("input", SM.debounce(function () {
+        state.search = qs("#search").value.trim(); state.page = 1; loadList();
+      }, 250));
+      qs("#clear-filters").addEventListener("click", function () { state.search = ""; qs("#search").value = ""; state.page = 1; loadList(); });
+      qs("#page-btns").addEventListener("click", function (e) { var b = e.target.closest("[data-page]"); if (b) { state.page = +b.dataset.page; loadList(); } });
+      qs("#page-prev").addEventListener("click", function () { if (state.page > 1) { state.page--; loadList(); } });
+      qs("#page-next").addEventListener("click", function () { state.page++; loadList(); });
+
+      async function loadSuppliers(query) {
+        var req = ++supplierRequest;
+        var q = (query || "").trim();
+        var r = db.from("suppliers").select("id,name,email,phone").order("name").limit(30);
+        if (q) r = r.or("name.ilike.%" + q.replace(/[,%()]/g, " ") + "%,email.ilike.%" + q.replace(/[,%()]/g, " ") + "%");
+        var result = await r;
+        if (result.error) throw result.error;
+        if (req === supplierRequest) { suppliers = result.data || []; renderSupList(); }
+      }
+      async function loadProducts(query) {
+        var req = ++productRequest, q = (query || "").trim();
+        var r = db.from("products").select("id,sku,name,cost,stock,active").eq("active", true).order("name").limit(30);
+        if (q) r = r.or("name.ilike.%" + q.replace(/[,%()]/g, " ") + "%,sku.ilike.%" + q.replace(/[,%()]/g, " ") + "%");
+        var result = await r;
+        if (result.error) throw result.error;
+        if (req === productRequest) { products = result.data || []; }
+      }
+      function renderSupList() {
+        var html = suppliers.map(function (s) {
+          return '<button type="button" class="cust-item" data-id="' + esc(s.id) + '"><i data-lucide="truck"></i><span>' + esc(s.name) + '</span><span class="c-sub">' + esc(s.email || "") + "</span></button>";
+        }).join("");
+        html += '<div class="cust-add"><button type="button" class="cust-item" id="suppick-add"><i data-lucide="truck"></i>Add new supplier</button></div>';
+        qs("#suppick-list").innerHTML = html || '<div class="ta-empty">No suppliers found.</div>';
+        SM.icons();
+      }
+      function openSupPop() {
+        qs("#suppick-search").value = ""; qs("#suppick-pop").hidden = false; qs("#suppick-btn").setAttribute("aria-expanded", "true");
+        loadSuppliers("").catch(SM.handleError); qs("#suppick-search").focus();
+      }
+      function closeSupPop() { qs("#suppick-pop").hidden = true; qs("#suppick-btn").setAttribute("aria-expanded", "false"); }
+      qs("#suppick-btn").addEventListener("click", function () { qs("#suppick-pop").hidden ? openSupPop() : closeSupPop(); });
+      qs("#suppick-search").addEventListener("input", SM.debounce(function () { loadSuppliers(qs("#suppick-search").value).catch(SM.handleError); }, 250));
+      qs("#suppick-search").addEventListener("keydown", function (e) { if (e.key === "Escape") { closeSupPop(); qs("#suppick-btn").focus(); } });
+      qs("#suppick-list").addEventListener("click", function (e) {
+        if (e.target.closest("#suppick-add")) {
+          closeSupPop(); qs("#quicksup-form").reset(); SM.clearFieldError(qs("#q-name")); SM.openModal(qs("#quicksup-overlay .modal")); return;
+        }
+        var item = e.target.closest(".cust-item[data-id]"); if (!item) return;
+        po.supplier = suppliers.filter(function (s) { return s.id === item.dataset.id; })[0] || null;
+        if (po.supplier) { qs("#suppick-name").textContent = po.supplier.name; qs("#suppick-error").hidden = true; }
+        closeSupPop(); qs("#suppick-btn").focus();
+      });
+      document.addEventListener("click", function (e) { if (!qs("#suppick-pop").hidden && !e.target.closest(".customer-box")) closeSupPop(); });
+      qs("#quicksup-form").addEventListener("submit", async function (e) {
+        e.preventDefault(); var btn = this.querySelector('[type="submit"]'), name = qs("#q-name").value.trim();
+        if (!name) { SM.setFieldError(qs("#q-name"), "Name is required."); return; }
+        SM.setLoading(btn, true, "Adding…");
+        try {
+          var r = await db.from("suppliers").insert({ name: name, email: qs("#q-email").value.trim() || null, phone: qs("#q-phone").value.trim() || null }).select("id,name,email,phone").single();
+          if (r.error) throw r.error;
+          po.supplier = r.data; qs("#suppick-name").textContent = r.data.name; qs("#suppick-error").hidden = true;
+          SM.closeModal(qs("#quicksup-overlay .modal")); SM.toast("Supplier added", "success");
+        } catch (err) { SM.handleError(err); }
+        finally { SM.setLoading(btn, false); }
+      });
+
+      function openNewPurchase() {
+        if (!SM.isManager()) { SM.toast("You do not have access to do that.", "error"); return; }
+        po.supplier = null; po.rows = []; qs("#suppick-name").textContent = "Select supplier"; qs("#suppick-error").hidden = true;
+        poBody.innerHTML = ""; addPoRow(true); updatePoTotals(); SM.openModal(qs("#newpo-overlay .modal"));
+      }
+      qs("#new-btn").addEventListener("click", openNewPurchase);
+      qs("#empty-new-btn").addEventListener("click", openNewPurchase);
+
+      function addPoRow(focusProduct) {
+        var row = { id: "r" + (++poRowSeq), product: null, matches: [], taIdx: 0, qty: 1, cost: 0 }; po.rows.push(row);
+        var el = document.createElement("div"); el.className = "line-row"; el.dataset.id = row.id;
+        el.innerHTML = '<span class="line-idx"></span><div class="line-product"><input class="input line-product-input" data-field="product" autocomplete="off" placeholder="Search product or SKU" aria-label="Product"><div class="ta-pop" hidden><div class="ta-list"></div></div><div class="line-sub"><span class="line-stock js-stock"></span></div></div>' +
+          '<div class="line-grid"><div class="line-cell line-qty-wrap"><label class="m-label">Qty</label><input class="input js-qty" data-field="qty" type="number" min="1" step="1" value="1" inputmode="numeric" aria-label="Quantity"></div>' +
+          '<div class="line-cell line-price-wrap"><label class="m-label">Unit cost</label><input class="input js-cost" data-field="unit_cost" type="number" min="0" step="0.01" value="0.00" inputmode="decimal" aria-label="Unit cost"></div>' +
+          '<div class="line-cell line-total-wrap"><span><label class="m-label">Total</label><span class="line-total js-total">' + fmt(0) + '</span></span></div><div class="line-del"><button type="button" class="btn btn-ghost btn-icon btn-sm js-del" aria-label="Remove line"><i data-lucide="trash-2"></i></button></div></div>';
+        poBody.appendChild(el); bindPoRow(row, el); renumberPo(); if (focusProduct) el.querySelector(".line-product-input").focus(); SM.icons(); return row;
+      }
+      function poRowEl(row) { return poBody.querySelector('.line-row[data-id="' + row.id + '"]'); }
+      function removePoRow(row) { var el = poRowEl(row), i = po.rows.indexOf(row); if (i > -1) po.rows.splice(i, 1); if (el) el.remove(); if (!po.rows.length) addPoRow(true); renumberPo(); updatePoTotals(); }
+      function renumberPo() { qsa(".line-row", poBody).forEach(function (el, i) { el.querySelector(".line-idx").textContent = i + 1; }); }
+      function bindPoRow(row, el) {
+        var input = el.querySelector(".line-product-input"), qty = el.querySelector(".js-qty"), cost = el.querySelector(".js-cost");
+        input.addEventListener("input", SM.debounce(function () { row.product = null; loadProducts(input.value).then(function () { openPoTA(row, el); }).catch(SM.handleError); updatePoLine(row, el); updatePoTotals(); }, 220));
+        input.addEventListener("keydown", function (e) {
+          var pop = el.querySelector(".ta-pop");
+          if (e.key === "Escape" && !pop.hidden) { e.preventDefault(); closePoTA(el); return; }
+          if (!pop.hidden) {
+            if (e.key === "ArrowDown") { e.preventDefault(); movePoTA(row, el, 1); }
+            else if (e.key === "ArrowUp") { e.preventDefault(); movePoTA(row, el, -1); }
+            else if (e.key === "Enter") { e.preventDefault(); if (row.matches.length) pickPoProduct(row, el, row.matches[row.taIdx || 0]); }
+            else if (e.key === "Tab") closePoTA(el);
+          } else if (e.key === "Enter" && row.matches.length === 1) { e.preventDefault(); pickPoProduct(row, el, row.matches[0]); }
+        });
+        input.addEventListener("blur", function () { setTimeout(function () { closePoTA(el); }, 140); });
+        qty.addEventListener("input", function () { row.qty = parseInt(qty.value, 10) || 0; updatePoLine(row, el); updatePoTotals(); });
+        qty.addEventListener("blur", function () { if (!(row.qty >= 1)) { row.qty = 1; qty.value = "1"; } updatePoLine(row, el); updatePoTotals(); });
+        [qty, cost].forEach(function (x) { x.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); poEnterNext(row); } }); });
+        cost.addEventListener("input", function () { row.cost = Math.max(0, parseFloat(cost.value) || 0); updatePoLine(row, el); updatePoTotals(); });
+        cost.addEventListener("blur", function () { if (!(row.cost >= 0)) row.cost = 0; cost.value = row.cost.toFixed(2); updatePoLine(row, el); updatePoTotals(); });
+        el.querySelector(".js-del").addEventListener("click", function () { removePoRow(row); });
+      }
+      function poEnterNext(row) { var i = po.rows.indexOf(row); if (i === po.rows.length - 1) addPoRow(true); else poRowEl(po.rows[i + 1]).querySelector(".line-product-input").focus(); }
+      function openPoTA(row, el) {
+        var input = el.querySelector(".line-product-input"), pop = el.querySelector(".ta-pop"), list = el.querySelector(".ta-list"), q = input.value.trim().toLowerCase();
+        var matches = products.filter(function (p) { return !q || p.name.toLowerCase().indexOf(q) > -1 || p.sku.toLowerCase().indexOf(q) > -1; }).slice(0, 8);
+        row.matches = matches; row.taIdx = 0;
+        list.innerHTML = matches.length ? matches.map(function (p, i) {
+          return '<button type="button" class="ta-item' + (i === 0 ? " is-active" : "") + '" data-i="' + i + '"><span class="ta-name">' + esc(p.name) +
+            '</span><span class="ta-meta"><span class="tnum">' + esc(p.sku) + '</span><span>' + Number(p.stock) + ' in stock</span><span class="ta-price">cost ' + fmt(p.cost) + "</span></span></button>";
+        }).join("") : '<div class="ta-empty">No products match. Add it in Products first.</div>';
+        pop.hidden = false; list.onmousedown = function (e) { e.preventDefault(); };
+        list.onclick = function (e) { var item = e.target.closest(".ta-item"); if (item) pickPoProduct(row, el, matches[+item.dataset.i]); };
+      }
+      function closePoTA(el) { var pop = el.querySelector(".ta-pop"); if (pop) pop.hidden = true; }
+      function movePoTA(row, el, d) { if (!row.matches.length) return; row.taIdx = ((row.taIdx || 0) + d + row.matches.length) % row.matches.length; qsa(".ta-item", el).forEach(function (item, i) { item.classList.toggle("is-active", i === row.taIdx); if (i === row.taIdx) item.scrollIntoView({ block: "nearest" }); }); }
+      function pickPoProduct(row, el, p) { if (!p) return; row.product = p; row.qty = 1; row.cost = Number(p.cost); el.querySelector(".line-product-input").value = p.name; el.querySelector(".js-qty").value = "1"; el.querySelector(".js-cost").value = row.cost.toFixed(2); closePoTA(el); updatePoLine(row, el); updatePoTotals(); var q = el.querySelector(".js-qty"); q.focus(); q.select(); }
+      function updatePoLine(row, el) { el.querySelector(".js-stock").textContent = row.product ? "Current stock: " + row.product.stock : ""; el.querySelector(".js-total").textContent = fmt(row.product ? Math.round(row.qty * row.cost * 100) / 100 : 0); }
+      function updatePoTotals() { var count = 0, units = 0, total = 0; po.rows.forEach(function (r) { if (r.product) { count++; units += r.qty; total += r.qty * r.cost; } }); qs("#po-total").textContent = fmt(Math.round(total * 100) / 100); qs("#po-lines-count").textContent = count ? count + (count === 1 ? " item" : " items") : "No items yet"; qs("#po-lines-units").textContent = units ? units + (units === 1 ? " unit" : " units") : ""; }
+
+      qs("#save-po-btn").addEventListener("click", async function () {
+        var btn = this;
+        if (!po.supplier) { qs("#suppick-error").textContent = "Choose a supplier for this purchase."; qs("#suppick-error").hidden = false; qs("#suppick-btn").focus(); return; }
+        var items = [], empty = null, bad = null;
+        po.rows.forEach(function (r) { if (!r.product) { if (!empty) empty = r; return; } if (!(r.qty >= 1) && !bad) bad = r; items.push({ product_id: r.product.id, qty: r.qty, unit_cost: r.cost }); });
+        if (!items.length) { SM.toast("Add at least one product to the purchase", "error"); poRowEl(empty || po.rows[0]).querySelector(".line-product-input").focus(); return; }
+        if (bad) { SM.toast("Every line needs a quantity of 1 or more", "error"); poRowEl(bad).querySelector(".js-qty").focus(); return; }
+        SM.setLoading(btn, true, "Saving…");
+        try {
+          var r = await db.rpc("create_purchase_order", { p_supplier_id: po.supplier.id, p_items: items, p_notes: null });
+          if (r.error) throw r.error;
+          SM.closeModal(qs("#newpo-overlay .modal")); SM.toast("Purchase saved", "success"); state.tab = "ordered"; state.page = 1; await refresh();
+        } catch (e) { SM.handleError(e); }
+        finally { SM.setLoading(btn, false); }
+      });
+
+      (async function init() {
+        var session = await SM.requireAuth(); if (!session) return;
+        try {
+          var ctx = await SM.loadContext();
+          if (!SM.isManager()) {
+            qs("#new-btn").hidden = true; qs("#empty-new-btn").hidden = true;
+          }
+          await loadCounts();
+          await loadList();
+          var hash = window.location.hash.replace("#", "");
+          if (hash) { var r = await byNumber(hash); if (r.data) { state.tab = r.data.status; await loadList(); await openDrawerFor(r.data); } }
+          if (params.get("new") === "1") openNewPurchase();
+        } catch (e) { SM.handleError(e); show(qs("#po-error")); SM.icons(); }
+      })();
+      SM.initShell();
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,959 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Settings · Shop Manager</title>
+  <script>
+    (function () {
+      try {
+        var t = localStorage.getItem('sm-theme') ||
+          (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+        document.documentElement.setAttribute('data-theme', t);
+      } catch (e) {}
+    })();
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/lucide@0.294.0"></script>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body data-nav="settings">
+
+  <!-- ===== Shared shell (footer spans carry data-* hooks for Settings) ===== -->
+  <div class="sidebar-overlay" id="sidebar-overlay"></div>
+  <aside class="sidebar" id="sidebar" aria-label="Main navigation">
+    <div class="sidebar-header">
+      <a class="brand" href="dashboard.html"><span class="brand-mark"><i data-lucide="store"></i></span>Shop Manager</a>
+    </div>
+    <nav class="sidebar-nav">
+      <a class="nav-link" data-nav="dashboard" href="dashboard.html"><i data-lucide="layout-dashboard"></i>Dashboard</a>
+      <a class="nav-link" data-nav="products" href="products.html"><i data-lucide="package"></i>Products</a>
+      <a class="nav-link" data-nav="orders" href="orders.html"><i data-lucide="shopping-cart"></i>Orders</a>
+      <a class="nav-link" data-nav="customers" href="customers.html"><i data-lucide="users"></i>Customers</a>
+      <a class="nav-link" data-nav="suppliers" href="suppliers.html"><i data-lucide="truck"></i>Suppliers</a>
+      <a class="nav-link" data-nav="purchases" href="purchases.html"><i data-lucide="clipboard-list"></i>Purchases</a>
+      <a class="nav-link" data-nav="expenses" href="expenses.html"><i data-lucide="wallet"></i>Expenses</a>
+      <a class="nav-link" data-nav="reports" href="reports.html"><i data-lucide="bar-chart-3"></i>Reports</a>
+      <a class="nav-link" data-nav="settings" href="settings.html"><i data-lucide="settings"></i>Settings</a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-row">
+        <span class="avatar" data-user-initials>MC</span>
+        <span class="user-meta"><span class="user-name" data-user-name>Maya Chen</span><span class="user-role" data-user-role>Manager</span></span>
+      </div>
+      <div class="sidebar-footer-row">
+        <span class="text-3" style="font-size:12px;" data-shop-name>Northwind Supply Co.</span>
+        <button type="button" class="btn btn-ghost btn-icon btn-sm" data-theme-toggle aria-label="Toggle theme">
+          <i data-lucide="sun" class="i-sun is-hidden"></i><i data-lucide="moon" class="i-moon"></i>
+        </button>
+      </div>
+    </div>
+  </aside>
+  <header class="topbar">
+    <button type="button" class="btn btn-ghost btn-icon" id="nav-toggle" aria-label="Open menu" aria-expanded="false" aria-controls="sidebar">
+      <i data-lucide="menu"></i>
+    </button>
+    <a class="brand" href="dashboard.html"><span class="brand-mark"><i data-lucide="store"></i></span><span class="topbar-title">Shop Manager</span></a>
+    <span class="spacer"></span>
+    <button type="button" class="btn btn-ghost btn-icon" data-theme-toggle aria-label="Toggle theme">
+      <i data-lucide="sun" class="i-sun is-hidden"></i><i data-lucide="moon" class="i-moon"></i>
+    </button>
+  </header>
+  <!-- ===== End shared shell ===== -->
+
+  <main class="main">
+    <!-- skeleton -->
+    <div id="set-skeleton" aria-hidden="true">
+      <div class="page-header"><div class="skeleton sk-line" style="width:120px;height:20px"></div><div class="skeleton sk-line" style="width:170px;height:44px"></div></div>
+      <div class="settings-layout">
+        <div class="skeleton sk-line" style="width:180px;height:180px;border-radius:8px"></div>
+        <div class="card"><div class="card-body"><div class="skeleton sk-line" style="width:35%"></div><div class="skeleton sk-block" style="height:220px;margin-top:12px"></div></div></div>
+      </div>
+    </div>
+
+    <!-- error (settings.html?state=error) -->
+    <div class="card" id="set-error" hidden>
+      <div class="error-state">
+        <div class="empty-icon"><i data-lucide="cloud-off"></i></div>
+        <h1 class="empty-title">Couldn't load settings</h1>
+        <p class="empty-desc">We couldn't reach the server. Check your connection and try again.</p>
+        <button type="button" class="btn btn-primary" onclick="window.location.reload()">Try again</button>
+      </div>
+    </div>
+
+    <!-- loaded -->
+    <div id="set-loaded" hidden>
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">Settings</h1>
+          <p class="page-sub">Shop details, team and personal preferences.</p>
+        </div>
+        <div class="page-actions">
+          <button type="button" class="btn btn-primary" id="invite-top-btn"><i data-lucide="user-plus"></i>Invite member</button>
+        </div>
+      </div>
+
+      <div class="settings-layout">
+        <!-- sub-navigation: vertical list on desktop, tabs on mobile -->
+        <nav class="subnav" aria-label="Settings sections">
+          <button type="button" class="subnav-link is-active" data-section="profile"><i data-lucide="store"></i>Shop profile</button>
+          <button type="button" class="subnav-link" data-section="team"><i data-lucide="users"></i>Team</button>
+          <button type="button" class="subnav-link" data-section="preferences"><i data-lucide="sliders-horizontal"></i>Preferences</button>
+          <button type="button" class="subnav-link" data-section="account"><i data-lucide="user-cog"></i>Account</button>
+        </nav>
+
+        <div class="settings-sections">
+          <!-- ===== Shop profile ===== -->
+          <section class="card" id="section-profile">
+            <div class="card-header"><h2 class="card-title">Shop profile</h2></div>
+            <div class="card-body">
+              <div class="field">
+                <span class="label">Logo</span>
+                <div class="logo-upload">
+                  <span class="logo-preview" id="logo-preview" role="button" tabindex="0" aria-label="Upload logo"><i data-lucide="camera"></i></span>
+                  <div>
+                    <button type="button" class="btn btn-secondary btn-sm" id="logo-btn">Upload logo</button>
+                    <p class="hint">PNG or SVG. Square images work best.</p>
+                  </div>
+                  <input type="file" id="logo-file" accept="image/*" hidden>
+                </div>
+              </div>
+              <div class="form-grid">
+                <div class="field">
+                  <label class="label" for="sp-name">Shop name</label>
+                  <input class="input" id="sp-name" data-field="shop_name" placeholder="e.g. Northwind Supply Co." aria-describedby="sp-name-error" required>
+                  <p class="field-error" id="sp-name-error" hidden></p>
+                </div>
+                <div class="field">
+                  <label class="label" for="sp-currency">Currency</label>
+                  <div class="select-wrap">
+                    <select class="select" id="sp-currency" data-field="currency">
+                      <option value="$">US dollar ($)</option>
+                      <option value="€">Euro (€)</option>
+                      <option value="£">British pound (£)</option>
+                      <option value="¥">Japanese yen (¥)</option>
+                      <option value="₹">Indian rupee (₹)</option>
+                      <option value="R$">Brazilian real (R$)</option>
+                    </select>
+                    <i data-lucide="chevron-down" class="select-caret"></i>
+                  </div>
+                  <p class="hint">Applies across the app after saving.</p>
+                </div>
+                <div class="field">
+                  <label class="label" for="sp-tax">Tax rate (%)</label>
+                  <input class="input" type="number" id="sp-tax" data-field="tax_rate" min="0" max="100" step="0.1" placeholder="e.g. 8.5" aria-describedby="sp-tax-error">
+                  <p class="field-error" id="sp-tax-error" hidden></p>
+                </div>
+                <div class="field">
+                  <label class="label" for="sp-address">Address</label>
+                  <input class="input" id="sp-address" data-field="address" placeholder="Street, city, country">
+                </div>
+              </div>
+            </div>
+            <div class="card-footer">
+              <span class="cell-muted" style="font-size:12px;">Used on orders, reports and invites.</span>
+              <button type="button" class="btn btn-primary" id="profile-save">Save changes</button>
+            </div>
+          </section>
+
+          <!-- ===== Team ===== -->
+          <section class="card" id="section-team" hidden>
+            <div class="card-header">
+              <h2 class="card-title">Team</h2>
+              <button type="button" class="btn btn-primary btn-sm" id="invite-btn"><i data-lucide="user-plus"></i>Invite member</button>
+            </div>
+            <div class="table-wrap table-plain" id="team-card">
+              <table class="table table-responsive">
+                <thead><tr>
+                  <th>Member</th>
+                  <th>Role</th>
+                  <th></th>
+                </tr></thead>
+                <tbody id="team-body"></tbody>
+              </table>
+            </div>
+            <div class="empty-state" id="team-empty" hidden>
+              <div class="empty-icon"><i data-lucide="users"></i></div>
+              <h2 class="empty-title">No team members yet</h2>
+              <p class="empty-desc">Invite a teammate and they'll set up their account from the link.</p>
+              <button type="button" class="btn btn-primary" id="empty-invite-btn"><i data-lucide="user-plus"></i>Invite member</button>
+            </div>
+            <div class="card-footer">
+              <span class="cell-muted" style="font-size:12px;">Role and membership changes take effect immediately.</span>
+            </div>
+          </section>
+
+          <!-- ===== Preferences ===== -->
+          <section class="card" id="section-preferences" hidden>
+            <div class="card-header"><h2 class="card-title">Preferences</h2></div>
+            <div class="card-body">
+              <div class="pref-row">
+                <div class="pref-label">
+                  <span class="pref-name">Theme</span>
+                  <p class="pref-desc">Light, dark, or follow your system setting. Applies immediately.</p>
+                </div>
+                <div class="pref-control">
+                  <div class="seg" role="group" aria-label="Theme">
+                    <button type="button" data-tmode="light"><i data-lucide="sun"></i>Light</button>
+                    <button type="button" data-tmode="dark"><i data-lucide="moon"></i>Dark</button>
+                    <button type="button" data-tmode="system"><i data-lucide="monitor"></i>System</button>
+                  </div>
+                </div>
+              </div>
+              <div class="pref-row">
+                <div class="pref-label">
+                  <span class="pref-name">Date format</span>
+                  <p class="pref-desc">How dates appear across the app.</p>
+                </div>
+                <div class="pref-control">
+                  <div class="select-wrap">
+                    <select class="select" id="pf-dateformat" data-field="date_format">
+                      <option value="mdy">Jun 12, 2025</option>
+                      <option value="dmy">12 Jun 2025</option>
+                      <option value="iso">2025-06-12</option>
+                    </select>
+                    <i data-lucide="chevron-down" class="select-caret"></i>
+                  </div>
+                </div>
+              </div>
+              <div class="pref-row">
+                <div class="pref-label">
+                  <span class="pref-name">Low-stock default threshold</span>
+                  <p class="pref-desc">Suggested "Reorder at" value for new products.</p>
+                </div>
+                <div class="pref-control">
+                  <input class="input" type="number" id="pf-lowstock" data-field="low_stock_threshold" min="0" step="1" style="width:96px;" aria-label="Low stock threshold">
+                  <span class="text-3">units</span>
+                </div>
+              </div>
+            </div>
+            <div class="card-footer">
+              <span class="cell-muted" style="font-size:12px;" id="date-preview"></span>
+              <button type="button" class="btn btn-primary" id="prefs-save">Save changes</button>
+            </div>
+          </section>
+
+          <!-- ===== Account ===== -->
+          <div id="section-account" hidden>
+            <section class="card">
+              <div class="card-header"><h2 class="card-title">Account</h2></div>
+              <div class="card-body">
+                <div class="form-grid">
+                  <div class="field">
+                    <label class="label" for="ac-name">Your name</label>
+                    <input class="input" id="ac-name" data-field="full_name" aria-describedby="ac-name-error" required>
+                    <p class="field-error" id="ac-name-error" hidden></p>
+                  </div>
+                  <div class="field">
+                    <label class="label" for="ac-email">Email</label>
+                    <input class="input" id="ac-email" data-field="email" disabled>
+                    <p class="hint">Your login email can't be changed here.</p>
+                  </div>
+                </div>
+              </div>
+              <div class="card-footer">
+                <button type="button" class="btn btn-primary" id="account-save">Save changes</button>
+                <span class="spacer"></span>
+                <button type="button" class="btn btn-secondary" id="logout-btn"><i data-lucide="log-out"></i>Log out</button>
+              </div>
+            </section>
+
+            <section class="card">
+              <div class="card-header"><h2 class="card-title">Change password</h2></div>
+              <form id="pw-form" novalidate>
+                <div class="card-body">
+                  <div class="field">
+                    <label class="label" for="pw-current">Current password</label>
+                    <div class="input-group">
+                      <input class="input" type="password" id="pw-current" data-field="password_current" autocomplete="current-password" aria-describedby="pw-current-error" required>
+                      <button type="button" class="input-trailing" id="pw-current-toggle" aria-label="Show password" aria-pressed="false">
+                        <i data-lucide="eye" class="i-eye"></i><i data-lucide="eye-off" class="i-eye-off is-hidden"></i>
+                      </button>
+                    </div>
+                    <p class="field-error" id="pw-current-error" hidden></p>
+                  </div>
+                  <div class="form-grid">
+                    <div class="field">
+                      <label class="label" for="pw-new">New password</label>
+                      <div class="input-group">
+                        <input class="input" type="password" id="pw-new" data-field="password" autocomplete="new-password" aria-describedby="pw-new-error" required>
+                        <button type="button" class="input-trailing" id="pw-new-toggle" aria-label="Show password" aria-pressed="false">
+                          <i data-lucide="eye" class="i-eye"></i><i data-lucide="eye-off" class="i-eye-off is-hidden"></i>
+                        </button>
+                      </div>
+                      <div class="strength" id="acc-strength" hidden>
+                        <div class="strength-bars" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
+                        <span class="strength-label" aria-live="polite"></span>
+                      </div>
+                      <ul class="pw-rules" id="acc-rules"></ul>
+                      <p class="field-error" id="pw-new-error" hidden></p>
+                    </div>
+                    <div class="field">
+                      <label class="label" for="pw-confirm">Confirm new password</label>
+                      <input class="input" type="password" id="pw-confirm" data-field="password_confirm" autocomplete="new-password" aria-describedby="pw-confirm-error" required>
+                      <p class="field-error" id="pw-confirm-error" hidden></p>
+                    </div>
+                  </div>
+                </div>
+                <div class="card-footer">
+                  <span></span>
+                  <button type="submit" class="btn btn-primary" id="pw-save">Update password</button>
+                </div>
+              </form>
+            </section>
+
+            <!-- danger zone -->
+            <section class="card card--flush danger-zone">
+              <div class="card-header">
+                <h2 class="card-title danger-title">Danger zone</h2>
+              </div>
+              <div class="card-body">
+                <p class="muted">Deleting your account removes the shop, its products, orders and history for everyone. This can't be undone.</p>
+              </div>
+              <div class="card-footer">
+                <span></span>
+                <button type="button" class="btn btn-danger-secondary" id="delete-btn"><i data-lucide="trash-2"></i>Delete account</button>
+              </div>
+            </section>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- ===== Invite member modal (2 steps) ===== -->
+  <div class="overlay" id="invite-overlay" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="invite-title">
+      <div class="sheet-handle" aria-hidden="true"></div>
+      <div class="modal-header">
+        <h2 class="modal-title" id="invite-title">Invite member</h2>
+        <button type="button" class="btn btn-ghost btn-icon btn-sm" data-layer-close aria-label="Close"><i data-lucide="x"></i></button>
+      </div>
+      <!-- step 1: details -->
+      <form id="invite-form" novalidate>
+        <div class="modal-body">
+          <div class="field">
+            <label class="label" for="iv-name">Full name</label>
+            <input class="input" id="iv-name" data-field="name" data-autofocus placeholder="e.g. Dana Whitfield" aria-describedby="iv-name-error" required>
+            <p class="field-error" id="iv-name-error" hidden></p>
+          </div>
+          <div class="field">
+            <label class="label" for="iv-email">Email</label>
+            <input class="input" type="email" id="iv-email" data-field="email" placeholder="teammate@company.com" aria-describedby="iv-email-error" required>
+            <p class="field-error" id="iv-email-error" hidden></p>
+          </div>
+          <div class="field">
+            <label class="label" for="iv-role">Role</label>
+            <div class="select-wrap">
+              <select class="select" id="iv-role" data-field="role">
+                <option value="staff">Staff — take orders, view stock</option>
+                <option value="manager">Manager — everything except settings</option>
+              </select>
+              <i data-lucide="chevron-down" class="select-caret"></i>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-layer-close>Cancel</button>
+          <button type="submit" class="btn btn-primary">Create invite link</button>
+        </div>
+      </form>
+      <!-- step 2: shareable link -->
+      <div class="modal-body" id="invite-step2" hidden>
+        <p class="muted mb-16">Share this link with <strong id="invitee-name"></strong>. They'll finish setting up their account on the sign-up page. The link expires in 7 days.</p>
+        <div class="invite-link">
+          <input class="input" id="invite-url" readonly aria-label="Invite link">
+          <button type="button" class="btn btn-secondary" id="copy-invite"><i data-lucide="copy"></i>Copy link</button>
+        </div>
+      </div>
+      <div class="modal-footer" id="invite-step2-footer" hidden>
+        <button type="button" class="btn btn-primary" data-layer-close>Done</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== Remove member confirm ===== -->
+  <div class="overlay" id="remove-overlay" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="remove-title">
+      <div class="sheet-handle" aria-hidden="true"></div>
+      <div class="modal-header">
+        <h2 class="modal-title" id="remove-title">Remove member</h2>
+        <button type="button" class="btn btn-ghost btn-icon btn-sm" data-layer-close aria-label="Close"><i data-lucide="x"></i></button>
+      </div>
+      <div class="modal-body">
+        <p class="muted">Remove <strong id="remove-name"></strong> from the shop? They'll lose access immediately. Their past orders stay.</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-layer-close>Keep member</button>
+        <button type="button" class="btn btn-danger" id="remove-confirm">Remove member</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== Delete account confirm (typed) ===== -->
+  <div class="overlay" id="delete-overlay" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="delete-title">
+      <div class="sheet-handle" aria-hidden="true"></div>
+      <div class="modal-header">
+        <h2 class="modal-title" id="delete-title">Delete account</h2>
+        <button type="button" class="btn btn-ghost btn-icon btn-sm" data-layer-close aria-label="Close"><i data-lucide="x"></i></button>
+      </div>
+      <div class="modal-body">
+        <p class="muted mb-16">This permanently deletes <strong id="delete-shop"></strong> and all of its data. Type <strong>DELETE</strong> to confirm.</p>
+        <div class="field" style="margin-bottom:0;">
+          <input class="input" id="delete-typed" data-autofocus placeholder="DELETE" aria-label="Type DELETE to confirm" autocomplete="off">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-layer-close>Keep account</button>
+        <button type="button" class="btn btn-danger" id="delete-confirm" disabled>Delete account</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+  <script>
+    (function () {
+      var qs = SM.qs, qsa = SM.qsa, esc = SM.escapeHtml;
+      var ctx = null;            /* set by SM.loadContext() in boot() */
+      var TEAM = [];
+      var pendingLogo = null;    /* File chosen but not saved yet */
+      var SHOP_COLS = 'id,name,currency,tax_rate,low_stock_threshold,timezone,address,logo_path';
+      var LOGO_BUCKET = 'shop-logos';
+
+      /* ================= helpers ================= */
+      function noAccess() {
+        var e = new Error('No rows affected');
+        e.userMessage = 'You do not have access to do that.';
+        return e;
+      }
+      /* RLS turns a forbidden UPDATE into "0 rows, no error" — treat that as a permission error */
+      async function updateOne(table, values, match, cols) {
+        var q = SM.db.from(table).update(values);
+        Object.keys(match).forEach(function (k) { q = q.eq(k, match[k]); });
+        var res = await q.select(cols).maybeSingle();
+        if (res.error) throw res.error;
+        if (!res.data) throw noAccess();
+        return res.data;
+      }
+
+      /* ================= section switching ================= */
+      var SECTIONS = ['profile', 'team', 'preferences', 'account'];
+      function showSection(id) {
+        if (SECTIONS.indexOf(id) < 0) id = 'profile';
+        SECTIONS.forEach(function (s) { qs('#section-' + s).hidden = s !== id; });
+        qsa('.subnav-link').forEach(function (a) {
+          var on = a.dataset.section === id;
+          a.classList.toggle('is-active', on);
+          if (on) a.setAttribute('aria-current', 'true'); else a.removeAttribute('aria-current');
+        });
+        try { history.replaceState(null, '', '#' + id); } catch (_) {}
+        SM.icons();
+      }
+      qsa('.subnav-link').forEach(function (a) {
+        a.addEventListener('click', function () { showSection(a.dataset.section); });
+      });
+
+      /* ================= shop profile ================= */
+      function logoUrl(path) {
+        return SM.db.storage.from(LOGO_BUCKET).getPublicUrl(path).data.publicUrl;
+      }
+      function paintLogo(path) {
+        if (!path) return;
+        qs('#logo-preview').innerHTML = '<img src="' + esc(logoUrl(path) + '?v=' + Date.now()) + '" alt="Shop logo preview">';
+      }
+      function logoExt(file) {
+        var byMime = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/svg+xml': 'svg', 'image/webp': 'webp', 'image/gif': 'gif' };
+        if (byMime[file.type]) return byMime[file.type];
+        var m = /\.([a-z0-9]{1,5})$/i.exec(file.name || '');
+        return m ? m[1].toLowerCase() : 'png';
+      }
+
+      function openLogoPicker() { if (SM.isOwner()) qs('#logo-file').click(); }
+      qs('#logo-preview').addEventListener('click', openLogoPicker);
+      qs('#logo-preview').addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openLogoPicker(); }
+      });
+      qs('#logo-btn').addEventListener('click', openLogoPicker);
+      qs('#logo-file').addEventListener('change', function () {
+        var file = this.files[0]; this.value = '';
+        if (!file) return;
+        if (!/^image\//.test(file.type)) { SM.toast('Choose an image file (PNG or SVG)', 'error'); return; }
+        var reader = new FileReader();
+        reader.onload = function () {
+          pendingLogo = file;
+          qs('#logo-preview').innerHTML = '<img src="' + reader.result + '" alt="Shop logo preview">';
+          SM.toast('Logo ready — save changes to apply', 'info');
+        };
+        reader.readAsDataURL(file);
+      });
+
+      qs('#profile-save').addEventListener('click', async function () {
+        var btn = this;
+        var nameIn = qs('#sp-name'), taxIn = qs('#sp-tax');
+        var ok = true;
+        if (!nameIn.value.trim()) { SM.setFieldError(nameIn, 'Shop name is required.'); ok = false; } else SM.clearFieldError(nameIn);
+        var tax = parseFloat(taxIn.value);
+        if (taxIn.value !== '' && (isNaN(tax) || tax < 0 || tax > 100)) {
+          SM.setFieldError(taxIn, 'Enter a percentage between 0 and 100.'); ok = false;
+        } else SM.clearFieldError(taxIn);
+        if (!ok) return;
+
+        var values = {
+          name: nameIn.value.trim(),
+          currency: qs('#sp-currency').value,
+          address: qs('#sp-address').value.trim() || null
+        };
+        if (!isNaN(tax)) values.tax_rate = tax;
+
+        SM.setLoading(btn, true, 'Saving…');
+        try {
+          var oldLogo = ctx.shop.logo_path;
+          if (pendingLogo) {
+            var path = ctx.shop.id + '/logo.' + logoExt(pendingLogo);
+            var up = await SM.db.storage.from(LOGO_BUCKET).upload(path, pendingLogo, {
+              upsert: true, contentType: pendingLogo.type, cacheControl: '60'
+            });
+            if (up.error) throw up.error;
+            values.logo_path = path;
+          }
+          var shop = await updateOne('shops', values, { id: ctx.shop.id }, SHOP_COLS);
+
+          ctx.shop = shop; SM.ctx.shop = shop;
+          SM.setCurrency(shop.currency);
+          var shopEl = document.querySelector('[data-shop-name]');
+          if (shopEl) shopEl.textContent = shop.name;
+          qs('#sp-name').value = shop.name;
+          qs('#sp-tax').value = String(shop.tax_rate);
+          qs('#sp-address').value = shop.address || '';
+          if (pendingLogo) {
+            pendingLogo = null;
+            paintLogo(shop.logo_path);
+            if (oldLogo && oldLogo !== shop.logo_path) {   /* extension changed: drop the orphan (best effort) */
+              SM.db.storage.from(LOGO_BUCKET).remove([oldLogo]).then(function () {}, function () {});
+            }
+          }
+          SM.toast('Changes saved', 'success'); /* same verb as the button */
+        } catch (e) {
+          SM.handleError(e);
+        } finally {
+          SM.setLoading(btn, false);
+        }
+      });
+
+      /* ================= team ================= */
+      var ROLE_CLS = { owner: 'badge-info', manager: 'badge-success', staff: 'badge-neutral' };
+      async function loadTeam() {
+        var res = await SM.db.from('shop_members')
+          .select('user_id,role,created_at,profiles(full_name,email)')
+          .eq('shop_id', ctx.shop.id)
+          .order('created_at', { ascending: true });
+        if (res.error) throw res.error;
+        TEAM = (res.data || []).map(function (r) {
+          var p = r.profiles || {};
+          return { user_id: r.user_id, role: r.role, email: p.email || '', name: p.full_name || p.email || 'Member' };
+        });
+      }
+      function renderTeam() {
+        var canRemove = SM.isOwner();
+        qs('#team-card').hidden = TEAM.length === 0;
+        qs('#team-empty').hidden = TEAM.length !== 0;
+        qs('#team-body').innerHTML = TEAM.map(function (m) {
+          var self = m.user_id === ctx.user.id;
+          var action = self
+            ? '<span class="cell-muted" style="font-size:12px;">You</span>'
+            : (canRemove && m.role !== 'owner'
+                ? '<button type="button" class="btn btn-ghost btn-icon btn-sm" data-remove="' + esc(m.user_id) + '" aria-label="Remove ' + esc(m.name) + '"><i data-lucide="user-minus"></i></button>'
+                : '');
+          return '<tr>' +
+            '<td data-label="Member"><span class="cell-user"><span class="avatar">' + esc(SM.initials(m.name)) + '</span>' +
+              '<span class="cell-user-meta"><span class="cell-user-name">' + esc(m.name) + '</span>' +
+              '<span class="cell-user-sub">' + esc(m.email) + '</span></span></span></td>' +
+            '<td data-label="Role"><span class="badge ' + (ROLE_CLS[m.role] || 'badge-neutral') + '"><span class="dot"></span>' +
+              esc(m.role.charAt(0).toUpperCase() + m.role.slice(1)) + '</span></td>' +
+            '<td data-label="" class="cell-actions">' + action + '</td></tr>';
+        }).join('');
+        SM.icons();
+      }
+      var removeTarget = null;
+      qs('#team-body').addEventListener('click', function (e) {
+        var b = e.target.closest('[data-remove]');
+        if (!b) return;
+        removeTarget = TEAM.filter(function (m) { return m.user_id === b.dataset.remove; })[0];
+        if (!removeTarget) return;
+        qs('#remove-name').textContent = removeTarget.name + ' (' + removeTarget.email + ')';
+        SM.openModal(qs('#remove-overlay .modal'));
+      });
+      qs('#remove-confirm').addEventListener('click', async function () {
+        if (!removeTarget) return;
+        var btn = this;
+        SM.setLoading(btn, true, 'Removing…');
+        try {
+          var res = await SM.db.from('shop_members').delete()
+            .eq('shop_id', ctx.shop.id).eq('user_id', removeTarget.user_id).select('user_id');
+          if (res.error) throw res.error;
+          if (!res.data || !res.data.length) throw noAccess();
+          SM.closeModal(qs('#remove-overlay .modal'));
+          SM.toast('Member removed', 'success'); /* same verb as the button */
+          removeTarget = null;
+          await loadTeam();
+          renderTeam();
+        } catch (e) {
+          SM.handleError(e);
+        } finally {
+          SM.setLoading(btn, false);
+        }
+      });
+
+      /* ---- invite flow ---- */
+      function openInvite() {
+        qs('#invite-form').reset();
+        SM.clearFieldError(qs('#iv-name')); SM.clearFieldError(qs('#iv-email'));
+        qs('#invite-form').hidden = false;
+        qs('#invite-step2').hidden = true;
+        qs('#invite-step2-footer').hidden = true;
+        qs('#invite-form').querySelector('.modal-footer').hidden = false;
+        SM.openModal(qs('#invite-overlay .modal'));
+      }
+      qs('#invite-btn').addEventListener('click', openInvite);
+      qs('#empty-invite-btn').addEventListener('click', openInvite);
+      qs('#invite-top-btn').addEventListener('click', function () { showSection('team'); openInvite(); });
+
+      function validEmail(v) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v); }
+
+      async function insertInvite(row) {
+        return SM.db.from('invitations').insert(row).select('token').single();
+      }
+      /* one open invite per email: if an older unused one blocks it, replace it with the new link */
+      async function replaceOpenInvite(row) {
+        var open = await SM.db.from('invitations').select('id,email')
+          .eq('shop_id', ctx.shop.id).is('accepted_at', null);
+        if (open.error) return open;
+        var ids = (open.data || []).filter(function (r) {
+          return String(r.email).toLowerCase() === row.email.toLowerCase();
+        }).map(function (r) { return r.id; });
+        if (!ids.length) return { error: { code: '23505', message: 'duplicate' } };
+        var del = await SM.db.from('invitations').delete().in('id', ids);
+        if (del.error) return del;
+        return insertInvite(row);
+      }
+
+      qs('#invite-form').addEventListener('submit', async function (e) {
+        e.preventDefault();
+        var name = qs('#iv-name').value.trim(), email = qs('#iv-email').value.trim();
+        var ok = true;
+        if (!name) { SM.setFieldError(qs('#iv-name'), 'Full name is required.'); ok = false; } else SM.clearFieldError(qs('#iv-name'));
+        if (!email) { SM.setFieldError(qs('#iv-email'), 'Email is required.'); ok = false; }
+        else if (!validEmail(email)) { SM.setFieldError(qs('#iv-email'), 'Enter a valid email address.'); ok = false; }
+        else if (TEAM.some(function (m) { return m.email.toLowerCase() === email.toLowerCase(); })) {
+          SM.setFieldError(qs('#iv-email'), 'This person is already on your team.'); ok = false;
+        } else SM.clearFieldError(qs('#iv-email'));
+        if (!ok) return;
+
+        var btn = qs('#invite-form button[type="submit"]');
+        var row = { shop_id: ctx.shop.id, email: email, full_name: name, role: qs('#iv-role').value };
+        SM.setLoading(btn, true, 'Creating…');
+        try {
+          var res = await insertInvite(row);
+          if (res.error && res.error.code === '23505') res = await replaceOpenInvite(row);
+          if (res.error) throw res.error;
+          if (!res.data || !res.data.token) throw noAccess();
+
+          var url = new URL('signup.html', window.location.href);
+          url.searchParams.set('invite', res.data.token);
+          qs('#invitee-name').textContent = name;
+          qs('#invite-url').value = url.href;
+          qs('#invite-form').hidden = true;
+          qs('#invite-form').querySelector('.modal-footer').hidden = true;
+          qs('#invite-step2').hidden = false;
+          qs('#invite-step2-footer').hidden = false;
+          qs('#invite-url').focus(); qs('#invite-url').select();
+          SM.toast('Invite link created', 'success'); /* same verb as the button */
+        } catch (err) {
+          SM.handleError(err);
+        } finally {
+          SM.setLoading(btn, false);
+        }
+      });
+      qs('#copy-invite').addEventListener('click', function () {
+        var input = qs('#invite-url'), btn = this;
+        function done() {
+          SM.toast('Invite link copied', 'success');
+          btn.focus();
+        }
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(input.value).then(done, function () { fallback(); });
+        } else fallback();
+        function fallback() {
+          input.focus(); input.select();
+          try { document.execCommand('copy'); done(); } catch (_) { SM.toast('Copy failed — select the link and copy manually', 'error'); }
+        }
+      });
+
+      /* ================= preferences ================= */
+      function isDarkNow() {
+        var a = document.documentElement.getAttribute('data-theme');
+        if (a) return a === 'dark';
+        return matchMedia('(prefers-color-scheme: dark)').matches;
+      }
+      function syncThemeIcons() {
+        var dark = isDarkNow();
+        qsa('[data-theme-toggle]').forEach(function (btn) {
+          var sun = btn.querySelector('.i-sun'), moon = btn.querySelector('.i-moon');
+          if (sun) sun.classList.toggle('is-hidden', !dark);
+          if (moon) moon.classList.toggle('is-hidden', dark);
+        });
+      }
+      function currentMode() {
+        var t = null;
+        try { t = localStorage.getItem('sm-theme'); } catch (_) {}
+        return (t === 'light' || t === 'dark') ? t : 'system';
+      }
+      function setThemeMode(mode) {
+        try {
+          if (mode === 'system') localStorage.removeItem('sm-theme');
+          else localStorage.setItem('sm-theme', mode);
+        } catch (_) {}
+        if (mode === 'system') document.documentElement.removeAttribute('data-theme');
+        else document.documentElement.setAttribute('data-theme', mode);
+        syncThemeIcons();
+        document.dispatchEvent(new CustomEvent('sm:theme', { detail: { theme: isDarkNow() ? 'dark' : 'light' } }));
+        paintThemeSeg();
+      }
+      function paintThemeSeg() {
+        var mode = currentMode();
+        qsa('[data-tmode]').forEach(function (b) {
+          var on = b.dataset.tmode === mode;
+          b.classList.toggle('is-selected', on);
+          b.setAttribute('aria-pressed', String(on));
+        });
+      }
+      qsa('[data-tmode]').forEach(function (b) {
+        b.addEventListener('click', function () { setThemeMode(b.dataset.tmode); });
+      });
+      if (matchMedia) {
+        var mq = matchMedia('(prefers-color-scheme: dark)');
+        var onMq = function () { if (currentMode() === 'system') syncThemeIcons(); };
+        if (mq.addEventListener) mq.addEventListener('change', onMq);
+        else if (mq.addListener) mq.addListener(onMq);
+      }
+
+      function paintDatePreview() {
+        var v = qs('#pf-dateformat').value;
+        var now = new Date();
+        var m = now.toLocaleDateString('en-US', { month: 'short' });
+        var day = now.getDate(), y = now.getFullYear();
+        var pad = function (n) { return ('0' + n).slice(-2); };
+        var txt = v === 'dmy' ? day + ' ' + m + ' ' + y
+                : v === 'iso' ? y + '-' + pad(now.getMonth() + 1) + '-' + pad(day)
+                : m + ' ' + day + ', ' + y;
+        qs('#date-preview').textContent = 'Preview: ' + txt;
+      }
+      qs('#pf-dateformat').addEventListener('change', paintDatePreview);
+
+      qs('#prefs-save').addEventListener('click', async function () {
+        var btn = this;
+        var fmt = qs('#pf-dateformat').value;
+        var owner = SM.isOwner();
+        var low = parseInt(qs('#pf-lowstock').value, 10);
+        if (owner && (isNaN(low) || low < 0)) {
+          SM.toast('Enter a whole number of 0 or more for the low-stock threshold', 'error');
+          return;
+        }
+        SM.setLoading(btn, true, 'Saving…');
+        try {
+          if (fmt !== ctx.profile.date_format) {
+            var prof = await updateOne('profiles', { date_format: fmt }, { id: ctx.user.id }, 'id,email,full_name,date_format');
+            ctx.profile = prof; SM.ctx.profile = prof;
+            SM.setDateFormat(prof.date_format);
+          }
+          if (owner && low !== ctx.shop.low_stock_threshold) {
+            var shop = await updateOne('shops', { low_stock_threshold: low }, { id: ctx.shop.id }, SHOP_COLS);
+            ctx.shop = shop; SM.ctx.shop = shop;
+            qs('#pf-lowstock').value = String(shop.low_stock_threshold);
+          }
+          paintDatePreview();
+          SM.toast('Changes saved', 'success'); /* same verb as the button */
+        } catch (e) {
+          SM.handleError(e);
+        } finally {
+          SM.setLoading(btn, false);
+        }
+      });
+
+      /* ================= account ================= */
+      qs('#account-save').addEventListener('click', async function () {
+        var btn = this, nameIn = qs('#ac-name');
+        if (!nameIn.value.trim()) { SM.setFieldError(nameIn, 'Name is required.'); nameIn.focus(); return; }
+        SM.clearFieldError(nameIn);
+        SM.setLoading(btn, true, 'Saving…');
+        try {
+          var prof = await updateOne('profiles', { full_name: nameIn.value.trim() }, { id: ctx.user.id }, 'id,email,full_name,date_format');
+          ctx.profile = prof; SM.ctx.profile = prof;
+          nameIn.value = prof.full_name;
+          var nameEl = document.querySelector('[data-user-name]');
+          if (nameEl) nameEl.textContent = prof.full_name;
+          var avEl = document.querySelector('[data-user-initials]');
+          if (avEl) avEl.textContent = SM.initials(prof.full_name);
+          SM.toast('Changes saved', 'success'); /* same verb as the button */
+        } catch (e) {
+          SM.handleError(e);
+        } finally {
+          SM.setLoading(btn, false);
+        }
+      });
+
+      /* change password — reuses the shared strength helpers */
+      var pwNew = qs('#pw-new');
+      var strength = SM.bindPasswordStrength(pwNew, qs('#acc-strength'), qs('#acc-rules'));
+      SM.bindPasswordToggle(qs('#pw-current-toggle'), qs('#pw-current'));
+      SM.bindPasswordToggle(qs('#pw-new-toggle'), pwNew);
+
+      qs('#pw-form').addEventListener('submit', async function (e) {
+        e.preventDefault();
+        var cur = qs('#pw-current'), conf = qs('#pw-confirm');
+        var ok = true;
+        if (!cur.value) { SM.setFieldError(cur, 'Enter your current password.'); ok = false; }
+        else SM.clearFieldError(cur);
+        var failed = strength.rules.filter(function (r) { return !r.test(pwNew.value); });
+        if (!pwNew.value) { SM.setFieldError(pwNew, 'New password is required.'); ok = false; }
+        else if (failed.length) {
+          SM.setFieldError(pwNew, 'Password needs ' + failed.map(function (r) { return r.label.toLowerCase(); }).join(', ') + '.');
+          ok = false;
+        } else SM.clearFieldError(pwNew);
+        if (!conf.value) { SM.setFieldError(conf, 'Confirm your new password.'); ok = false; }
+        else if (conf.value !== pwNew.value) { SM.setFieldError(conf, "Passwords don't match."); ok = false; }
+        else SM.clearFieldError(conf);
+        if (!ok) { var bad = qs('#pw-form').querySelector('[aria-invalid="true"]'); if (bad) bad.focus(); return; }
+
+        var btn = qs('#pw-save');
+        SM.setLoading(btn, true, 'Updating…');
+        try {
+          /* Supabase's updateUser does not check the old password, so re-verify it first */
+          var re = await SM.db.auth.signInWithPassword({ email: ctx.user.email, password: cur.value });
+          if (re.error) {
+            if (/invalid login credentials/i.test(re.error.message || '')) {
+              SM.setFieldError(cur, 'Current password is incorrect.'); cur.focus();
+            } else SM.handleError(re.error);
+            return;
+          }
+          var up = await SM.db.auth.updateUser({ password: pwNew.value });
+          if (up.error) {
+            if (up.error.code === 'same_password') {
+              SM.setFieldError(pwNew, 'Choose a password different from your current one.'); pwNew.focus();
+            } else SM.handleError(up.error);
+            return;
+          }
+          qs('#pw-form').reset();
+          strength.update();
+          SM.toast('Password updated', 'success'); /* same verb as the button */
+        } catch (err) {
+          SM.handleError(err);
+        } finally {
+          SM.setLoading(btn, false);
+        }
+      });
+
+      qs('#logout-btn').addEventListener('click', async function () {
+        var btn = this;
+        SM.setLoading(btn, true, 'Logging out…');
+        try {
+          var res = await SM.db.auth.signOut();
+          if (res.error) throw res.error;
+          SM.toast('Logged out', 'success'); /* same verb as the button */
+          setTimeout(function () { window.location.assign('login.html'); }, 600);
+        } catch (e) {
+          SM.setLoading(btn, false);
+          SM.handleError(e);
+        }
+      });
+
+      /* ---- danger zone ---- */
+      qs('#delete-btn').addEventListener('click', function () {
+        qs('#delete-shop').textContent = ctx.shop.name;
+        qs('#delete-typed').value = '';
+        qs('#delete-confirm').disabled = true;
+        SM.openModal(qs('#delete-overlay .modal'));
+      });
+      qs('#delete-typed').addEventListener('input', function () {
+        qs('#delete-confirm').disabled = this.value.trim().toUpperCase() !== 'DELETE';
+      });
+      qs('#delete-confirm').addEventListener('click', function () {
+        /* The schema has no delete-account / delete-shop RPC, so nothing is deleted.
+           Be honest instead of showing a fake success. */
+        SM.closeModal(qs('#delete-overlay .modal'));
+        SM.toast('Account deletion is not available yet. Please contact support.', 'error');
+      });
+
+      /* ================= role gating (UX only — RLS is the real protection) ================= */
+      function applyRoleGates() {
+        var owner = SM.isOwner(), mgr = SM.isManager();
+        if (!owner) {
+          ['#sp-name', '#sp-currency', '#sp-tax', '#sp-address', '#logo-btn', '#logo-file',
+           '#profile-save', '#pf-lowstock'].forEach(function (s) { qs(s).disabled = true; });
+          qs('#logo-preview').setAttribute('tabindex', '-1');
+          qs('.danger-zone').hidden = true;
+        }
+        if (!mgr) {
+          ['#invite-top-btn', '#invite-btn', '#empty-invite-btn'].forEach(function (s) { qs(s).hidden = true; });
+        }
+        if (mgr && !owner) {   /* managers may only invite staff */
+          var opt = qs('#iv-role option[value="manager"]');
+          if (opt) opt.remove();
+        }
+      }
+
+      function fillForms() {
+        var s = ctx.shop;
+        qs('#sp-name').value = s.name;
+        var cur = qs('#sp-currency');
+        var known = Array.prototype.some.call(cur.options, function (o) { return o.value === s.currency; });
+        if (!known) {
+          var o = document.createElement('option');
+          o.value = s.currency; o.textContent = s.currency;
+          cur.appendChild(o);
+        }
+        cur.value = s.currency;
+        qs('#sp-tax').value = String(s.tax_rate);
+        qs('#sp-address').value = s.address || '';
+        paintLogo(s.logo_path);
+        qs('#ac-name').value = ctx.profile.full_name || '';
+        qs('#ac-email').value = ctx.profile.email || ctx.user.email || '';
+        qs('#pf-lowstock').value = String(s.low_stock_threshold);
+        qs('#pf-dateformat').value = ctx.profile.date_format || 'mdy';
+      }
+
+      /* ================= boot ================= */
+      function show(el) {
+        [qs('#set-skeleton'), qs('#set-loaded'), qs('#set-error')].forEach(function (x) { x.hidden = x !== el; });
+      }
+      (async function init() {
+        try {
+          var session = await SM.requireAuth();
+          if (!session) return;                 /* redirecting to login.html */
+          ctx = await SM.loadContext();
+          applyRoleGates();
+          fillForms();
+          paintThemeSeg();
+          paintDatePreview();
+          await loadTeam();
+          renderTeam();
+          show(qs('#set-loaded'));
+          showSection(window.location.hash.replace('#', ''));
+        } catch (e) {
+          console.error(e);
+          if (e && e.userMessage) SM.handleError(e);
+          show(qs('#set-error'));
+          SM.icons();
+        }
+      })();
+
+      SM.initShell();
+    })();
+  </script>
+</body>
+</html>
